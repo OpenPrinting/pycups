@@ -4,8 +4,8 @@ VERSION:=$(shell $(PYTHON) setup.py --version)
 SDIST_ARGS=--formats=gztar -d.
 RPMCONFIGDIR:=$(shell rpm -E "%{_rpmconfigdir}" 2>/dev/null || :)
 
-SOURCES=cupsmodule.c cupsconnection.c cupsppd.c cupsipp.c setup.py \
-	cupsppd.h cupsipp.h cupsconnection.h cupsmodule.h \
+SOURCES=cupsmodule.c cupsconnection.c cupsppd.c cupsipp.c cupspython-internal.c setup.py \
+	cupsppd.h cupsipp.h cupspython-internal.h cupsconnection.h cupsmodule.h \
 	psdriver.attr postscriptdriver.prov
 
 DIST=Makefile test.py \

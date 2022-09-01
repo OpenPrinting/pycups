@@ -50,7 +50,7 @@ set_http_error (http_status_t status)
   debugprintf("set_http_error: %d\n", (int) status);
   if (v != NULL) {
     PyErr_SetObject (HTTPError, v);
-    Py_DECREF (v);
+    _pycups_wrapper_void(v, Py_DECREF);
   }
 }
 
@@ -64,14 +64,14 @@ set_ipp_error (ipp_status_t status, const char *message)
   PyObject *v = Py_BuildValue ("(is)", status, message);
   if (v != NULL) {
     PyErr_SetObject (IPPError, v);
-    Py_DECREF (v);
+    _pycups_wrapper_void(v, Py_DECREF);
   }
 }
 
 static PyObject *
 PyObj_from_UTF8 (const char *utf8)
 {
-  PyObject *val = PyUnicode_Decode (utf8, strlen (utf8), "utf-8", NULL);
+  PyObject *val = _pycups_PyUnicode_Decode (utf8, strlen (utf8), "utf-8", NULL);
   if (!val) {
     // CUPS 1.2 always gives us UTF-8.  Before CUPS 1.2, the
     // ppd-* strings come straight from the PPD with no
@@ -81,7 +81,7 @@ PyObj_from_UTF8 (const char *utf8)
     const char *orig = utf8;
     char *ascii;
     int i;
-    PyErr_Clear ();
+    _pycups_PyErr_Clear ();
     ascii = malloc (1 + strlen (orig));
     for (i = 0; orig[i]; i++)
       ascii[i] = orig[i] & 0x7f;
@@ -97,7 +97,7 @@ const char *
 UTF8_from_PyObj (char **const utf8, PyObject *obj)
 // converts PyUnicode or PyBytes to char *
 {
-  if (PyUnicode_Check (obj)) {
+  if (_pycups_PyUnicode_Check (obj)) {
     const char *string;
     PyObject *stringobj = PyUnicode_AsUTF8String (obj);
     if (stringobj == NULL)

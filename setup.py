@@ -63,6 +63,6 @@ setup (name="pycups",
        license="GPLv2+",
        ext_modules=[Extension("cups",
                               ["cupsmodule.c", "cupsconnection.c",
-                               "cupsppd.c", "cupsipp.c"],
+                               "cupsppd.c", "cupsipp.c", "cupspython-internal.c"],
                               libraries=libraries,
                               define_macros=[("VERSION", '"%s"' % VERSION)])])

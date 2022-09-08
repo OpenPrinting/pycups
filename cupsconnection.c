@@ -99,32 +99,32 @@ UTF8_from_PyObj (char **const utf8, PyObject *obj)
 {
   if (_pycups_PyUnicode_Check (obj)) {
     const char *string;
-    PyObject *stringobj = PyUnicode_AsUTF8String (obj);
+    PyObject *stringobj = _pycups_PyUnicode_AsUTF8String (obj);
     if (stringobj == NULL)
       return NULL;
 
-    string = PyBytes_AsString (stringobj);
+    string = _pycups_PyBytes_AsString (stringobj);
     if (string == NULL) {
-      Py_DECREF (stringobj);
+      _pycups_wrapper_void(stringobj, Py_DECREF);
       return NULL;
     }
 
     *utf8 = strdup (string);
-    Py_DECREF (stringobj);
+    _pycups_wrapper_void(stringobj, Py_DECREF);
     return *utf8;
   }
-  else if (PyBytes_Check (obj)) {
+  else if (_pycups_PyBytes_Check (obj)) {
     const char *ret;
-    PyObject *unicodeobj = PyUnicode_FromEncodedObject (obj, "utf-8", NULL);
+    PyObject *unicodeobj = _pycups_PyUnicode_FromEncodedObject (obj, "utf-8", NULL);
     if (unicodeobj == NULL)
       return NULL;
 
     ret = UTF8_from_PyObj (utf8, unicodeobj);
-    Py_DECREF (unicodeobj);
+    _pycups_wrapper_void(unicodeobj, Py_DECREF);
     return ret;
   }
 
-  PyErr_SetString (PyExc_TypeError, "unicode or bytes object required");
+  _pycups_PyErr_SetString (PyExc_TypeError, "unicode or bytes object required");
   return NULL;
 }
 
@@ -206,7 +206,7 @@ Connection_init (Connection *self, PyObject *args, PyObject *kwds)
   Connection_end_allow_threads (self);
 
   if (!self->http) {
-    PyErr_SetString (PyExc_RuntimeError, "failed to connect to server");
+    _pycups_PyErr_SetString (PyExc_RuntimeError, "failed to connect to server");
     debugprintf ("<- Connection_init() = -1\n");
     return -1;
   }
@@ -215,7 +215,7 @@ Connection_init (Connection *self, PyObject *args, PyObject *kwds)
   {
     Connections = malloc (sizeof (Connection *));
     if (Connections == NULL) {
-      PyErr_SetString (PyExc_RuntimeError, "insufficient memory");
+      _pycups_PyErr_SetString (PyExc_RuntimeError, "insufficient memory");
       debugprintf ("<- Connection_init() = -1\n");
       return -1;
     }
@@ -226,7 +226,7 @@ Connection_init (Connection *self, PyObject *args, PyObject *kwds)
 
     if ((1 + NumConnections) >= UINT_MAX / sizeof (Connection *))
     {
-      PyErr_SetString (PyExc_RuntimeError, "too many connections");
+      _pycups_PyErr_SetString (PyExc_RuntimeError, "too many connections");
       debugprintf ("<- Connection_init() == -1\n");
       return -1;
     }
@@ -235,7 +235,7 @@ Connection_init (Connection *self, PyObject *args, PyObject *kwds)
 			   (1 + NumConnections) * sizeof (Connection *));
     if (Connections == NULL) {
       Connections = old_array;
-      PyErr_SetString (PyExc_RuntimeError, "insufficient memory");
+      _pycups_PyErr_SetString (PyExc_RuntimeError, "insufficient memory");
       debugprintf ("<- Connection_init() = -1\n");
       return -1;
     }
@@ -306,7 +306,7 @@ Connection_repr (Connection *self)
   char buffer[256];
   snprintf (buffer, 256, "<cups.Connection object for %s at %p>",
 			  self->host, self);
-  return PyUnicode_FromString (buffer);
+  return _pycups_PyUnicode_FromString (buffer);
 }
 
 void
@@ -374,8 +374,8 @@ password_callback (int newstyle,
   } else
     args = Py_BuildValue ("(s)", prompt);
 
-  result = PyEval_CallObject (tls->cups_password_callback, args);
-  Py_DECREF (args);
+  result = _pycups_PyEval_CallObject (tls->cups_password_callback, args);
+  _pycups_wrapper_void(args, Py_DECREF);
   if (result == NULL)
   {
     debugprintf ("<- password_callback (exception)\n");
@@ -388,7 +388,7 @@ password_callback (int newstyle,
       !UTF8_from_PyObj (&self->cb_password, result))
     self->cb_password = NULL;
 
-  Py_DECREF (result);
+  _pycups_wrapper_void(result, Py_DECREF);
   if (!self->cb_password || !*self->cb_password)
   {
     debugprintf ("<- password_callback (empty/null)\n");
@@ -477,7 +477,7 @@ do_printer_request (Connection *self, PyObject *args, PyObject *kwds,
   Connection_begin_allow_threads (self);
   answer = cupsDoRequest (self->http, request, "/admin/");
   Connection_end_allow_threads (self);
-  if (PyErr_Occurred ()) {
+  if (_pycups_PyErr_Occurred ()) {
     if (answer)
       ippDelete (answer);
     debugprintf("<- do_printer_request (error)\n");
@@ -520,7 +520,7 @@ Connection_getDests (Connection *self)
 {
   cups_dest_t *dests;
   int num_dests;
-  PyObject *pydests = PyDict_New ();
+  PyObject *pydests = _pycups_PyDict_New ();
   int i;
 
   debugprintf ("-> Connection_getDests()\n");
@@ -533,10 +533,10 @@ Connection_getDests (Connection *self)
   for (i = 0; i <= num_dests; i++) {
     PyObject *largs = Py_BuildValue ("()");
     PyObject *lkwlist = Py_BuildValue ("{}");
-    Dest *destobj = (Dest *) PyType_GenericNew (&cups_DestType,
+    Dest *destobj = (Dest *) _pycups_PyType_GenericNew (&cups_DestType,
 						largs, lkwlist);
-    Py_DECREF (largs);
-    Py_DECREF (lkwlist);
+    _pycups_wrapper_void(largs, Py_DECREF);
+    _pycups_wrapper_void(lkwlist, Py_DECREF);
 
     cups_dest_t *dest;
     PyObject *nameinstance;
@@ -546,7 +546,7 @@ Connection_getDests (Connection *self)
 	dest = cupsGetDest (NULL, NULL, num_dests, dests);
 	if (dest == NULL) {
 	  /* No default printer. */
-	  Py_DECREF ((PyObject *) destobj);
+	  _pycups_wrapper_void((PyObject *) destobj, Py_DECREF);
 	  break;
 	}
 
@@ -560,8 +560,8 @@ Connection_getDests (Connection *self)
 
     copy_dest (destobj, dest);
 
-    PyDict_SetItem (pydests, nameinstance, (PyObject *) destobj);
-    Py_DECREF ((PyObject *) destobj);
+    _pycups_PyDict_SetItem (pydests, nameinstance, (PyObject *) destobj);
+    _pycups_wrapper_void((PyObject *) destobj, Py_DECREF);
   }
 
   debugprintf ("cupsFreeDests()\n");
@@ -582,27 +582,27 @@ cups_dest_cb (void *user_data, unsigned flags, cups_dest_t *dest)
   int ret = 0;
 
   debugprintf ("-> cups_dest_cb\n");
-  destobj = (Dest *) PyType_GenericNew (&cups_DestType,
+  destobj = (Dest *) _pycups_PyType_GenericNew (&cups_DestType,
 					largs, lkwlist);
-  Py_DECREF (largs);
-  Py_DECREF (lkwlist);
+  _pycups_wrapper_void(largs, Py_DECREF);
+  _pycups_wrapper_void(lkwlist, Py_DECREF);
   copy_dest (destobj, dest);
   args = Py_BuildValue ("(OiO)",
 			context->user_data,
 			flags,
 			destobj);
-  Py_DECREF ((PyObject *) destobj);
+  _pycups_wrapper_void((PyObject *) destobj, Py_DECREF);
 
-  result = PyEval_CallObject (context->cb, args);
-  Py_DECREF (args);
+  result = _pycups_PyEval_CallObject (context->cb, args);
+  _pycups_wrapper_void(args ,Py_DECREF);
   if (result == NULL) {
     debugprintf ("<- cups_dest_cb (exception from cb func)\n");
     ret = 0;
   }
 
 
-  if (result && PyLong_Check (result)) {
-    ret = PyLong_AsLong (result);
+  if (result && _pycups_PyLong_Check (result)) {
+    ret = _pycups_PyLong_AsLong (result);
     debugprintf ("   cups_dest_cb: cb func returned %d\n", ret);
   }
 
@@ -632,10 +632,10 @@ PyObject_from_attr_value (ipp_attribute_t *attr, int i)
     break;
   case IPP_TAG_INTEGER:
   case IPP_TAG_ENUM:
-    val = PyLong_FromLong (ippGetInteger (attr, i));
+    val = _pycups_PyLong_FromLong (ippGetInteger (attr, i));
     break;
   case IPP_TAG_BOOLEAN:
-    val = PyBool_FromLong (ippGetBoolean (attr, i));
+    val = _pycups_PyBool_FromLong (ippGetBoolean (attr, i));
     break;
   case IPP_TAG_RANGE:
     lower = ippGetRange (attr, i, &upper);
@@ -649,7 +649,7 @@ PyObject_from_attr_value (ipp_attribute_t *attr, int i)
 
     // TODO:
   case IPP_TAG_DATE:
-    val = PyUnicode_FromString ("(IPP_TAG_DATE)");
+    val = _pycups_PyUnicode_FromString ("(IPP_TAG_DATE)");
     break;
   case IPP_TAG_RESOLUTION:
     xres = ippGetResolution(attr, i, &yres, &units);
@@ -661,7 +661,7 @@ PyObject_from_attr_value (ipp_attribute_t *attr, int i)
   default:
     snprintf (unknown, sizeof (unknown),
 	      "(unknown IPP value tag 0x%x)", ippGetValueTag(attr));
-    val = PyUnicode_FromString (unknown);
+    val = _pycups_PyUnicode_FromString (unknown);
     break;
   }
 
@@ -671,14 +671,14 @@ PyObject_from_attr_value (ipp_attribute_t *attr, int i)
 static PyObject *
 PyList_from_attr_values (ipp_attribute_t *attr)
 {
-  PyObject *list = PyList_New (0);
+  PyObject *list = _pycups_PyList_New (0);
   int i;
   debugprintf ("-> PyList_from_attr_values()\n");
   for (i = 0; i < ippGetCount (attr); i++) {
     PyObject *val = PyObject_from_attr_value (attr, i);
     if (val) {
-      PyList_Append (list, val);
-      Py_DECREF (val);
+      _pycups_PyList_Append (list, val);
+      _pycups_wrapper_void(val, Py_DECREF);
     }
   }
 
@@ -721,7 +721,7 @@ Connection_getPrinters (Connection *self)
       // No printers.
       debugprintf ("<- Connection_getPrinters() = {} (no printers)\n");
       ippDelete (answer);
-      return PyDict_New ();
+      return _pycups_PyDict_New ();
     }
 
     set_ipp_error (answer ? ippGetStatusCode (answer) : cupsLastError (),
@@ -732,7 +732,7 @@ Connection_getPrinters (Connection *self)
     return NULL;
   }
 
-  result = PyDict_New ();
+  result = _pycups_PyDict_New ();
   for (attr = ippFirstAttribute (answer); attr; attr = ippNextAttribute (answer)) {
     PyObject *dict;
     char *printer = NULL;
@@ -743,7 +743,7 @@ Connection_getPrinters (Connection *self)
     if (!attr)
       break;
 
-    dict = PyDict_New ();
+    dict = _pycups_PyDict_New ();
     for (; attr && ippGetGroupTag (attr) == IPP_TAG_PRINTER;
 	 attr = ippNextAttribute (answer)) {
       PyObject *val = NULL;
@@ -756,7 +756,7 @@ Connection_getPrinters (Connection *self)
 		!strcmp (ippGetName (attr), "printer-state")) &&
 	       ippGetValueTag (attr) == IPP_TAG_ENUM) {
 	int ptype = ippGetInteger (attr, 0);
-	val = PyLong_FromLong (ptype);
+	val = _pycups_PyLong_FromLong (ptype);
       }
       else if ((!strcmp (ippGetName (attr),
 			 "printer-make-and-model") ||
@@ -775,7 +775,7 @@ Connection_getPrinters (Connection *self)
 			"printer-is-accepting-jobs") &&
 	       ippGetValueTag (attr) == IPP_TAG_BOOLEAN) {
 	int b = ippGetBoolean (attr, 0);
-	val = PyLong_FromLong (b);
+	val = _pycups_PyLong_FromLong (b);
       }
       else if ((!strcmp (ippGetName (attr),
 			 "printer-up-time") ||
@@ -783,7 +783,7 @@ Connection_getPrinters (Connection *self)
 			 "queued-job-count")) &&
 	       ippGetValueTag (attr) == IPP_TAG_INTEGER) {
 	int u = ippGetInteger (attr, 0);
-	val = PyLong_FromLong (u);
+	val = _pycups_PyLong_FromLong (u);
       }
       else if ((!strcmp (ippGetName (attr), "device-uri") ||
 		!strcmp (ippGetName (attr), "printer-uri-supported")) &&
@@ -792,23 +792,23 @@ Connection_getPrinters (Connection *self)
       }
       else if (!strcmp (ippGetName (attr), "printer-is-shared") &&
 	       ippGetValueTag (attr) == IPP_TAG_BOOLEAN) {
-	val = PyBool_FromLong (ippGetBoolean (attr, 0));
+	val = _pycups_PyBool_FromLong (ippGetBoolean (attr, 0));
       }
 
       if (val) {
 	debugprintf ("Added %s to dict\n", ippGetName (attr));
-	PyDict_SetItemString (dict, ippGetName (attr), val);
-	Py_DECREF (val);
+	_pycups_PyDict_SetItemString (dict, ippGetName (attr), val);
+  _pycups_wrapper_void(val, Py_DECREF);
       }
     }
 
     if (printer) {
       PyObject *key = PyObj_from_UTF8 (printer);
-      PyDict_SetItem (result, key, dict);
-      Py_DECREF (key);
+      _pycups_PyDict_SetItem (result, key, dict);
+      _pycups_wrapper_void(key, Py_DECREF);
     }
 
-    Py_DECREF (dict);
+    _pycups_wrapper_void(dict, Py_DECREF);
     if (!attr)
       break;
   }
@@ -843,7 +843,7 @@ Connection_getClasses (Connection *self)
       // No classes.
       debugprintf ("<- Connection_getClasses() = {} (no classes)\n");
       ippDelete (answer);
-      return PyDict_New ();
+      return _pycups_PyDict_New ();
     }
 
     set_ipp_error (answer ? ippGetStatusCode (answer) : cupsLastError (),
@@ -854,7 +854,7 @@ Connection_getClasses (Connection *self)
     return NULL;
   }
 
-  result = PyDict_New ();
+  result = _pycups_PyDict_New ();
   for (attr = ippFirstAttribute (answer); attr; attr = ippNextAttribute (answer)) {
     PyObject *members = NULL;
     char *classname = NULL;
@@ -877,27 +877,27 @@ Connection_getClasses (Connection *self)
 	printer_uri = (char *) ippGetString (attr, 0, NULL);
       else if (!strcmp (ippGetName (attr), "member-names") &&
 	       ippGetValueTag (attr) == IPP_TAG_NAME) {
-	Py_XDECREF (members);
+	_pycups_wrapper_void(members, Py_XDECREF);
 	members = PyList_from_attr_values (attr);
       }
     }
 
     if (printer_uri) {
-      Py_XDECREF (members);
+      _pycups_wrapper_void(members, Py_XDECREF);
       members = PyObj_from_UTF8 (printer_uri);
     }
 
     if (!members)
-      members = PyList_New (0);
+      members = _pycups_PyList_New(0);
 
     if (classname) {
       PyObject *key = PyObj_from_UTF8 (classname);
       debugprintf ("Added class %s\n", classname);
-      PyDict_SetItem (result, key, members);
-      Py_DECREF (key);
+      _pycups_PyDict_SetItem(result, key, members);
+      _pycups_wrapper_void(key, Py_DECREF);
     }
 
-    Py_DECREF (members);
+    _pycups_wrapper_void(members, Py_DECREF);
     if (!attr)
       break;
   }
@@ -962,21 +962,21 @@ do_getPPDs (Connection *self, PyObject *args, PyObject *kwds, int all_lists)
     {
       size_t i, n;
       char **ss;
-      if (!PyList_Check (exclude_schemes_obj))
+      if (!_pycups_PyList_Check (exclude_schemes_obj))
 	{
-	  PyErr_SetString (PyExc_TypeError, "List required (exclude_schemes)");
+	  _pycups_PyErr_SetString (PyExc_TypeError, "List required (exclude_schemes)");
 	  ippDelete (request);
 	  return NULL;
 	}
 
-      n = PyList_Size (exclude_schemes_obj);
+      n = _pycups_PyList_Size (exclude_schemes_obj);
       ss = calloc (n + 1, sizeof (char *));
       for (i = 0; i < n; i++)
 	{
-	  PyObject *val = PyList_GetItem (exclude_schemes_obj, i); // borrowed
-	  if (!PyUnicode_Check (val) && !PyBytes_Check (val))
+	  PyObject *val = _pycups_PyList_GetItem (exclude_schemes_obj, i); // borrowed
+	  if (!_pycups_PyUnicode_Check (val) && !_pycups_PyBytes_Check (val))
 	    {
-	      PyErr_SetString (PyExc_TypeError,
+	      _pycups_PyErr_SetString (PyExc_TypeError,
 			       "String list required (exclude_schemes)");
 	      ippDelete (request);
 	      while (i > 0)
@@ -999,21 +999,21 @@ do_getPPDs (Connection *self, PyObject *args, PyObject *kwds, int all_lists)
     {
       size_t i, n;
       char **ss;
-      if (!PyList_Check (include_schemes_obj))
+      if (!_pycups_PyList_Check (include_schemes_obj))
 	{
-	  PyErr_SetString (PyExc_TypeError, "List required (include_schemes)");
+	  _pycups_PyErr_SetString (PyExc_TypeError, "List required (include_schemes)");
 	  ippDelete (request);
 	  return NULL;
 	}
 
-      n = PyList_Size (include_schemes_obj);
+      n = _pycups_PyList_Size (include_schemes_obj);
       ss = calloc (n + 1, sizeof (char *));
       for (i = 0; i < n; i++)
 	{
-	  PyObject *val = PyList_GetItem (include_schemes_obj, i); // borrowed
-	  if (!PyUnicode_Check (val) && !PyBytes_Check (val))
+	  PyObject *val = _pycups_PyList_GetItem (include_schemes_obj, i); // borrowed
+	  if (!_pycups_PyUnicode_Check (val) && !_pycups_PyBytes_Check (val))
 	    {
-	      PyErr_SetString (PyExc_TypeError,
+	      _pycups_PyErr_SetString (PyExc_TypeError,
 			       "String list required (include_schemes)");
 	      ippDelete (request);
 	      while (i > 0)
@@ -1123,7 +1123,7 @@ do_getPPDs (Connection *self, PyObject *args, PyObject *kwds, int all_lists)
     return NULL;
   }
 
-  result = PyDict_New ();
+  result = _pycups_PyDict_New ();
   for (attr = ippFirstAttribute (answer); attr; attr = ippNextAttribute (answer)) {
     PyObject *dict;
     char *ppdname = NULL;
@@ -1134,7 +1134,7 @@ do_getPPDs (Connection *self, PyObject *args, PyObject *kwds, int all_lists)
     if (!attr)
       break;
 
-    dict = PyDict_New ();
+    dict = _pycups_PyDict_New ();
     for (; attr && ippGetGroupTag (attr) == IPP_TAG_PRINTER;
 	 attr = ippNextAttribute (answer)) {
       PyObject *val = NULL;
@@ -1150,8 +1150,8 @@ do_getPPDs (Connection *self, PyObject *args, PyObject *kwds, int all_lists)
 
 	if (val) {
 	  debugprintf ("Adding %s to ppd dict\n", ippGetName (attr));
-	  PyDict_SetItemString (dict, ippGetName (attr), val);
-	  Py_DECREF (val);
+	  _pycups_PyDict_SetItemString (dict, ippGetName (attr), val);
+	  _pycups_wrapper_void(val, Py_DECREF);
 	}
       }
     }
@@ -1159,11 +1159,11 @@ do_getPPDs (Connection *self, PyObject *args, PyObject *kwds, int all_lists)
     if (ppdname) {
       PyObject *key = PyObj_from_UTF8 (ppdname);
       debugprintf ("Adding %s to result dict\n", ppdname);
-      PyDict_SetItem (result, key, dict);
-      Py_DECREF (key);
+      _pycups_PyDict_SetItem (result, key, dict);
+      _pycups_wrapper_void(key, Py_DECREF);
     }
 
-    Py_DECREF (dict);
+    _pycups_wrapper_void(dict, Py_DECREF);
     if (!attr)
       break;
   }
@@ -1202,7 +1202,7 @@ Connection_getServerPPD (Connection *self, PyObject *args)
   }
   debugprintf ("<- Connection_getServerPPD(\"%s\") = \"%s\"\n",
 	       ppd_name, filename);
-  return PyUnicode_FromString (filename);
+  return _pycups_PyUnicode_FromString (filename);
 }
 
 static PyObject *
@@ -1241,7 +1241,7 @@ Connection_getDocument (Connection *self, PyObject *args)
   if (fd < 0) {
     debugprintf ("<- Connection_getDocument() EXCEPTION\n");
     ippDelete (request);
-    return PyErr_SetFromErrno (PyExc_RuntimeError);
+    return _pycups_PyErr_SetFromErrno (PyExc_RuntimeError);
   }
 
   Connection_begin_allow_threads (self);
@@ -1267,22 +1267,22 @@ Connection_getDocument (Connection *self, PyObject *args)
 				IPP_TAG_NAME)) != NULL)
     name = ippGetString (attr, 0, NULL);
 
-  dict = PyDict_New ();
+  dict = _pycups_PyDict_New();
 
-  obj = PyUnicode_FromString (docfilename);
-  PyDict_SetItemString (dict, "file", obj);
-  Py_DECREF (obj);
+  obj = _pycups_PyUnicode_FromString(docfilename);
+  _pycups_PyDict_SetItemString(dict, "file", obj);
+  _pycups_wrapper_void(obj, Py_DECREF);
 
   if (format) {
-    obj = PyUnicode_FromString (format);
-    PyDict_SetItemString (dict, "document-format", obj);
-    Py_DECREF (obj);
+    obj = _pycups_PyUnicode_FromString(format);
+    _pycups_PyDict_SetItemString(dict, "document-format", obj);
+    _pycups_wrapper_void(obj, Py_DECREF);
   }
 
   if (name) {
     obj = PyObj_from_UTF8 (name);
-    PyDict_SetItemString (dict, "document-name", obj);
-    Py_DECREF (obj);
+    _pycups_PyDict_SetItemString(dict, "document-name", obj);
+    _pycups_wrapper_void(obj, Py_DECREF);
   }
 
   debugprintf ("<- Connection_getDocument() = {'file':\"%s\","
@@ -1323,21 +1323,21 @@ Connection_getDevices (Connection *self, PyObject *args, PyObject *kwds)
     {
       size_t i, n;
       char **ss;
-      if (!PyList_Check (exclude_schemes))
+      if (!_pycups_PyList_Check (exclude_schemes))
 	{
-	  PyErr_SetString (PyExc_TypeError, "List required (exclude_schemes)");
+	  _pycups_PyErr_SetString (PyExc_TypeError, "List required (exclude_schemes)");
 	  ippDelete (request);
 	  return NULL;
 	}
 
-      n = PyList_Size (exclude_schemes);
+      n = _pycups_PyList_Size (exclude_schemes);
       ss = calloc (n + 1, sizeof (char *));
       for (i = 0; i < n; i++)
 	{
-	  PyObject *val = PyList_GetItem (exclude_schemes, i); // borrowed ref
-	  if (!PyUnicode_Check (val) && !PyBytes_Check (val))
+	  PyObject *val = _pycups_PyList_GetItem (exclude_schemes, i); // borrowed ref
+	  if (!_pycups_PyUnicode_Check (val) && !_pycups_PyBytes_Check (val))
 	    {
-	      PyErr_SetString (PyExc_TypeError,
+	      _pycups_PyErr_SetString (PyExc_TypeError,
 			       "String list required (exclude_schemes)");
 	      ippDelete (request);
 	      while (i > 0)
@@ -1361,21 +1361,21 @@ Connection_getDevices (Connection *self, PyObject *args, PyObject *kwds)
     {
       size_t i, n;
       char **ss;
-      if (!PyList_Check (include_schemes))
+      if (!_pycups_PyList_Check (include_schemes))
 	{
-	  PyErr_SetString (PyExc_TypeError, "List required (include_schemes)");
+	  _pycups_PyErr_SetString (PyExc_TypeError, "List required (include_schemes)");
 	  ippDelete (request);
 	  return NULL;
 	}
 
-      n = PyList_Size (include_schemes);
+      n = _pycups_PyList_Size (include_schemes);
       ss = calloc (n + 1, sizeof (char *));
       for (i = 0; i < n; i++)
 	{
-	  PyObject *val = PyList_GetItem (include_schemes, i); // borrowed ref
-	  if (!PyUnicode_Check (val) && !PyBytes_Check (val))
+	  PyObject *val = _pycups_PyList_GetItem (include_schemes, i); // borrowed ref
+	  if (!_pycups_PyUnicode_Check (val) && !_pycups_PyBytes_Check (val))
 	    {
-	      PyErr_SetString (PyExc_TypeError,
+	      _pycups_PyErr_SetString (PyExc_TypeError,
 			       "String list required (include_schemes)");
 	      ippDelete (request);
 	      while (i > 0)
@@ -1413,7 +1413,7 @@ Connection_getDevices (Connection *self, PyObject *args, PyObject *kwds)
     return NULL;
   }
 
-  result = PyDict_New ();
+  result = _pycups_PyDict_New ();
   for (attr = ippFirstAttribute (answer); attr; attr = ippNextAttribute (answer)) {
     PyObject *dict;
     char *device_uri = NULL;
@@ -1438,19 +1438,19 @@ Connection_getDevices (Connection *self, PyObject *args, PyObject *kwds)
 
       if (val) {
 	debugprintf ("Adding %s to device dict\n", ippGetName (attr));
-	PyDict_SetItemString (dict, ippGetName (attr), val);
-	Py_DECREF (val);
+	_pycups_PyDict_SetItemString (dict, ippGetName (attr), val);
+	_pycups_wrapper_void(val, Py_DECREF);
       }
     }
 
     if (device_uri) {
       PyObject *key = PyObj_from_UTF8 (device_uri);
       debugprintf ("Adding %s to result dict\n", device_uri);
-      PyDict_SetItem (result, key, dict);
-      Py_DECREF (key);
+      _pycups_PyDict_SetItem (result, key, dict);
+      _pycups_wrapper_void(key, Py_DECREF);
     }
 
-    Py_DECREF (dict);
+    _pycups_wrapper_void(dict, Py_DECREF);
     if (!attr)
       break;
   }
@@ -1467,17 +1467,17 @@ get_requested_attrs (PyObject *requested_attrs, size_t *n_attrs, char ***attrs)
   size_t n;
   char **as;
 
-  if (!PyList_Check (requested_attrs)) {
+  if (!_pycups_PyList_Check (requested_attrs)) {
     PyErr_SetString (PyExc_TypeError, "List required");
     return -1;
   }
 
-  n = PyList_Size (requested_attrs);
+  n = _pycups_PyList_Size (requested_attrs);
   as = malloc ((n + 1) * sizeof (char *));
   for (i = 0; i < n; i++) {
-    PyObject *val = PyList_GetItem (requested_attrs, i); // borrowed ref
-    if (!PyUnicode_Check (val) && !PyBytes_Check (val)) {
-      PyErr_SetString (PyExc_TypeError, "String required");
+    PyObject *val = _pycups_PyList_GetItem (requested_attrs, i); // borrowed ref
+    if (!_pycups_PyUnicode_Check (val) && !_pycups_PyBytes_Check (val)) {
+      _pycups_PyErr_SetString (PyExc_TypeError, "String required");
       while (--i >= 0)
 	free (as[i]);
       free (as);
@@ -1573,7 +1573,7 @@ Connection_getJobs (Connection *self, PyObject *args, PyObject *kwds)
     return NULL;
   }
 
-  result = PyDict_New ();
+  result = _pycups_PyDict_New ();
   for (attr = ippFirstAttribute (answer); attr; attr = ippNextAttribute (answer)) {
     PyObject *dict;
     int job_id = -1;
@@ -1584,7 +1584,7 @@ Connection_getJobs (Connection *self, PyObject *args, PyObject *kwds)
     if (!attr)
       break;
 
-    dict = PyDict_New ();
+    dict = _pycups_PyDict_New ();
     for (; attr && ippGetGroupTag (attr) == IPP_TAG_JOB;
 	 attr = ippNextAttribute (answer)) {
       PyObject *val = NULL;
@@ -1603,7 +1603,7 @@ Connection_getJobs (Connection *self, PyObject *args, PyObject *kwds)
 		ippGetValueTag (attr) == IPP_TAG_INTEGER) ||
 	       (!strcmp (ippGetName (attr), "job-state") &&
 		ippGetValueTag (attr) == IPP_TAG_ENUM))
-	val = PyLong_FromLong (ippGetInteger (attr, 0));
+	val = _pycups_PyLong_FromLong (ippGetInteger (attr, 0));
       else if ((!strcmp (ippGetName (attr), "job-name") &&
 		ippGetValueTag (attr) == IPP_TAG_NAME) ||
 	       (!strcmp (ippGetName (attr), "job-originating-user-name") &&
@@ -1613,7 +1613,7 @@ Connection_getJobs (Connection *self, PyObject *args, PyObject *kwds)
 	val = PyObj_from_UTF8 (ippGetString (attr, 0, NULL));
       else if (!strcmp (ippGetName (attr), "job-preserved") &&
 	       ippGetValueTag (attr) == IPP_TAG_BOOLEAN)
-	val = PyBool_FromLong (ippGetInteger (attr, 0));
+	val = _pycups_PyBool_FromLong (ippGetInteger (attr, 0));
       else {
 	if (ippGetCount (attr) > 1)
 	  val = PyList_from_attr_values (attr);
@@ -1623,19 +1623,19 @@ Connection_getJobs (Connection *self, PyObject *args, PyObject *kwds)
 
       if (val) {
 	debugprintf ("Adding %s to job dict\n", ippGetName (attr));
-	PyDict_SetItemString (dict, ippGetName (attr), val);
-	Py_DECREF (val);
+	_pycups_PyDict_SetItemString (dict, ippGetName (attr), val);
+	_pycups_wrapper_void(val, Py_DECREF);
       }
     }
 
     if (job_id != -1) {
       debugprintf ("Adding %d to result dict\n", job_id);
-      PyObject *job_obj = PyLong_FromLong (job_id);
-      PyDict_SetItem (result, job_obj, dict);
-      Py_DECREF (job_obj);
+      PyObject *job_obj = _pycups_PyLong_FromLong (job_id);
+      _pycups_PyDict_SetItem (result, job_obj, dict);
+      _pycups_wrapper_void(job_obj, Py_DECREF);
     }
 
-    Py_DECREF (dict);
+    _pycups_wrapper_void(dict, Py_DECREF);
 
     if (!attr)
       break;
@@ -1692,7 +1692,7 @@ Connection_getJobAttributes (Connection *self, PyObject *args, PyObject *kwds)
     return NULL;
   }
 
-  result = PyDict_New ();
+  result = _pycups_PyDict_New ();
   for (attr = ippFirstAttribute (answer); attr; attr = ippNextAttribute (answer)) {
     PyObject *obj;
 
@@ -1707,8 +1707,8 @@ Connection_getJobAttributes (Connection *self, PyObject *args, PyObject *kwds)
       // Can't represent this.
       continue;
 
-    PyDict_SetItemString (result, ippGetName (attr), obj);
-    Py_DECREF (obj);
+    _pycups_PyDict_SetItemString (result, ippGetName (attr), obj);
+    _pycups_wrapper_void(obj, Py_DECREF);
   }
 
   ippDelete (answer);
@@ -1771,7 +1771,7 @@ Connection_cancelAllJobs (Connection *self, PyObject *args, PyObject *kwds)
     return NULL;
 
   if (nameobj && uriobj) {
-    PyErr_SetString (PyExc_RuntimeError,
+    _pycups_PyErr_SetString (PyExc_RuntimeError,
 		     "name or uri must be specified but not both");
     return NULL;
   }
@@ -1783,7 +1783,7 @@ Connection_cancelAllJobs (Connection *self, PyObject *args, PyObject *kwds)
     if (UTF8_from_PyObj (&uri, uriobj) == NULL)
       return NULL;
   } else {
-    PyErr_SetString (PyExc_RuntimeError,
+    _pycups_PyErr_SetString (PyExc_RuntimeError,
 		     "name or uri must be specified");
     return NULL;
   }
@@ -1871,20 +1871,20 @@ Connection_createJob (Connection *self, PyObject *args, PyObject *kwds)
   }
   debugprintf ("-> Connection_createJob(printer=%s, title=%s)\n", printer, title);
 
-  if (!PyDict_Check (options_obj)) {
+  if (!_pycups_PyDict_Check (options_obj)) {
     free (title);
     free (printer);
-    PyErr_SetString (PyExc_TypeError, "options must be a dict");
+    _pycups_PyErr_SetString (PyExc_TypeError, "options must be a dict");
     return NULL;
   }
-  while (PyDict_Next (options_obj, &pos, &key, &val)) {
+  while (_pycups_PyDict_Next (options_obj, &pos, &key, &val)) {
     char *name, *value;
-    if ((!PyUnicode_Check (key) && !PyBytes_Check (key)) ||
-        (!PyUnicode_Check (val) && !PyBytes_Check (val))) {
+    if ((!_pycups_PyUnicode_Check (key) && !_pycups_PyBytes_Check (key)) ||
+        (!_pycups_PyUnicode_Check (val) && !_pycups_PyBytes_Check (val))) {
       cupsFreeOptions (num_settings, settings);
       free (title);
       free (printer);
-      PyErr_SetString (PyExc_TypeError, "Keys and values must be strings");
+      _pycups_PyErr_SetString (PyExc_TypeError, "Keys and values must be strings");
       return NULL;
     }
 
@@ -1913,7 +1913,7 @@ Connection_createJob (Connection *self, PyObject *args, PyObject *kwds)
   free (title);
   free (printer);
   debugprintf ("<- Connection_createJob() = %d\n", jobid);
-  return PyLong_FromLong (jobid);
+  return _pycups_PyLong_FromLong (jobid);
 }
 
 static PyObject *
@@ -1967,7 +1967,7 @@ Connection_startDocument (Connection *self, PyObject *args, PyObject *kwds)
   free (doc_name);
   free (printer);
   debugprintf ("<- Connection_startDocument() = %d\n", status);
-  return PyLong_FromLong (status);
+  return _pycups_PyLong_FromLong (status);
 }
 
 static PyObject *
@@ -1984,7 +1984,7 @@ Connection_writeRequestData (Connection *self, PyObject *args, PyObject *kwds)
     return NULL;
 
   buffer = (char *) malloc((size_t) length);
-  memcpy(buffer, PyBytes_AsString(buffer_obj), length);
+  memcpy(buffer, _pycups_PyBytes_AsString(buffer_obj), length);
   debugprintf ("-> Connection_writeRequestData(length=%d)\n", length);
 
   Connection_begin_allow_threads (self);
@@ -2001,7 +2001,7 @@ Connection_writeRequestData (Connection *self, PyObject *args, PyObject *kwds)
 
   free (buffer);
   debugprintf ("<- Connection_writeRequestData() = %d\n", status);
-  return PyLong_FromLong (status);
+  return _pycups_PyLong_FromLong (status);
 }
 
 static PyObject *
@@ -2032,7 +2032,7 @@ Connection_finishDocument (Connection *self, PyObject *args, PyObject *kwds)
 
   free (printer);
   debugprintf ("<- Connection_finishDicument() = %d\n", answer);
-  return PyLong_FromLong (answer);
+  return _pycups_PyLong_FromLong (answer);
 }
 
 static PyObject *
@@ -2052,7 +2052,7 @@ Connection_moveJob (Connection *self, PyObject *args, PyObject *kwds)
     return NULL;
 
   if (!jobprinteruriobj) {
-    PyErr_SetString (PyExc_RuntimeError,
+    _pycups_PyErr_SetString (PyExc_RuntimeError,
 		     "No job_printer_uri (destination) given");
     return NULL;
   }
@@ -2061,7 +2061,7 @@ Connection_moveJob (Connection *self, PyObject *args, PyObject *kwds)
     if (UTF8_from_PyObj (&printeruri, printeruriobj) == NULL)
       return NULL;
   } else if (job_id == -1) {
-    PyErr_SetString (PyExc_RuntimeError,
+    _pycups_PyErr_SetString (PyExc_RuntimeError,
 		     "job_id or printer_uri required");
     return NULL;
   }
@@ -2121,18 +2121,18 @@ Connection_authenticateJob (Connection *self, PyObject *args)
     return NULL;
 
   if (auth_info_list) {
-    if (!PyList_Check (auth_info_list)) {
-      PyErr_SetString (PyExc_TypeError, "List required");
+    if (!_pycups_PyList_Check (auth_info_list)) {
+      _pycups_PyErr_SetString (PyExc_TypeError, "List required");
       return NULL;
     }
 
-    num_auth_info = PyList_Size (auth_info_list);
+    num_auth_info = _pycups_PyList_Size (auth_info_list);
     debugprintf ("sizeof values = %Zd\n", sizeof (auth_info_values));
     if (num_auth_info > sizeof (auth_info_values))
       num_auth_info = sizeof (auth_info_values);
 
     for (i = 0; i < num_auth_info; i++) {
-      PyObject *val = PyList_GetItem (auth_info_list, i); // borrowed ref
+      PyObject *val = _pycups_PyList_GetItem (auth_info_list, i); // borrowed ref
       if (UTF8_from_PyObj (&auth_info_values[i], val) == NULL) {
 	while (--i >= 0)
 	  free (auth_info_values[i]);
@@ -2272,13 +2272,13 @@ Connection_getFile (Connection *self, PyObject *args, PyObject *kwds)
 
   if ((fd > -1 && (filename || fileobj)) ||
       (filename && fileobj)) {
-    PyErr_SetString (PyExc_RuntimeError,
+    _pycups_PyErr_SetString (PyExc_RuntimeError,
 		     "Only one destination type may be specified");
     return NULL;
   }
 
   if (fileobj) {
-    fd = PyObject_AsFileDescriptor(fileobj);
+    fd = _pycups_PyObject_AsFileDescriptor(fileobj);
   }
 
   if (filename) {
@@ -2320,13 +2320,13 @@ Connection_putFile (Connection *self, PyObject *args, PyObject *kwds)
 
   if ((fd > -1 && (filename || fileobj)) ||
       (filename && fileobj)) {
-    PyErr_SetString (PyExc_RuntimeError,
+    _pycups_PyErr_SetString (PyExc_RuntimeError,
 		     "Only one destination type may be specified");
     return NULL;
   }
 
   if (fileobj) {
-    fd = PyObject_AsFileDescriptor(fileobj);
+    fd = _pycups_PyObject_AsFileDescriptor(fileobj);
   }
 
   if (filename) {
@@ -2426,8 +2426,8 @@ Connection_addPrinter (Connection *self, PyObject *args, PyObject *kwds)
   if (ppdname)
     ppds_specified++;
   if (ppd) {
-    if (!PyObject_TypeCheck (ppd, &cups_PPDType)) {
-      PyErr_SetString (PyExc_TypeError, "Expecting cups.PPD");
+    if (!_pycups_PyObject_TypeCheck (ppd, &cups_PPDType)) {
+      _pycups_PyErr_SetString (PyExc_TypeError, "Expecting cups.PPD");
       debugprintf ("<- Connection_addPrinter() EXCEPTION\n");
       free (name);
       free (ppdfile);
@@ -2441,7 +2441,7 @@ Connection_addPrinter (Connection *self, PyObject *args, PyObject *kwds)
     ppds_specified++;
   }
   if (ppds_specified > 1) {
-    PyErr_SetString (PyExc_RuntimeError,
+    _pycups_PyErr_SetString (PyExc_RuntimeError,
 		     "Only one PPD may be given");
     debugprintf ("<- Connection_addPrinter() EXCEPTION\n");
     free (name);
@@ -2470,12 +2470,12 @@ Connection_addPrinter (Connection *self, PyObject *args, PyObject *kwds)
       free (info);
       free (location);
       free (device);
-      return PyErr_SetFromErrno (PyExc_RuntimeError);
+      return _pycups_PyErr_SetFromErrno (PyExc_RuntimeError);
     }
 
     args = Py_BuildValue ("(i)", fd);
     result = PPD_writeFd ((PPD *) ppd, args);
-    Py_DECREF (args);
+    _pycups_wrapper_void(args, Py_DECREF);
     close (fd);
 
     if (result == NULL) {
@@ -2530,7 +2530,7 @@ Connection_addPrinter (Connection *self, PyObject *args, PyObject *kwds)
   } else if (ppdfile)
     free (ppdfile);
 
-  if (PyErr_Occurred ()) {
+  if (_pycups_PyErr_Occurred ()) {
     if (answer)
       ippDelete (answer);
     debugprintf ("<- Connection_addPrinter() EXCEPTION\n");
@@ -2580,7 +2580,7 @@ Connection_setPrinterDevice (Connection *self, PyObject *args)
   Connection_begin_allow_threads (self);
   answer = cupsDoRequest (self->http, request, "/admin/");
   Connection_end_allow_threads (self);
-  if (PyErr_Occurred ()) {
+  if (_pycups_PyErr_Occurred ()) {
     if (answer)
       ippDelete (answer);
     return NULL;
@@ -2626,7 +2626,7 @@ Connection_setPrinterInfo (Connection *self, PyObject *args)
     Connection_begin_allow_threads (self);
     answer = cupsDoRequest (self->http, request, "/admin/");
     Connection_end_allow_threads (self);
-    if (PyErr_Occurred ()) {
+    if (_pycups_PyErr_Occurred ()) {
       if (answer)
 	ippDelete (answer);
       return NULL;
@@ -2681,7 +2681,7 @@ Connection_setPrinterLocation (Connection *self, PyObject *args)
     Connection_begin_allow_threads (self);
     answer = cupsDoRequest (self->http, request, "/admin/");
     Connection_end_allow_threads (self);
-    if (PyErr_Occurred ()) {
+    if (_pycups_PyErr_Occurred ()) {
       if (answer)
 	ippDelete (answer);
       return NULL;
@@ -2729,7 +2729,7 @@ Connection_setPrinterShared (Connection *self, PyObject *args)
     Connection_begin_allow_threads (self);
     answer = cupsDoRequest (self->http, request, "/admin/");
     Connection_end_allow_threads (self);
-    if (PyErr_Occurred ()) {
+    if (_pycups_PyErr_Occurred ()) {
       if (answer)
 	ippDelete (answer);
       return NULL;
@@ -2794,7 +2794,7 @@ Connection_setPrinterJobSheets (Connection *self, PyObject *args)
     Connection_begin_allow_threads (self);
     answer = cupsDoRequest (self->http, request, "/admin/");
     Connection_end_allow_threads (self);
-    if (PyErr_Occurred ()) {
+    if (_pycups_PyErr_Occurred ()) {
       if (answer)
 	ippDelete (answer);
       return NULL;
@@ -2850,7 +2850,7 @@ Connection_setPrinterErrorPolicy (Connection *self, PyObject *args)
     Connection_begin_allow_threads (self);
     answer = cupsDoRequest (self->http, request, "/admin/");
     Connection_end_allow_threads (self);
-    if (PyErr_Occurred ()) {
+    if (_pycups_PyErr_Occurred ()) {
       if (answer)
 	ippDelete (answer);
       return NULL;
@@ -2905,7 +2905,7 @@ Connection_setPrinterOpPolicy (Connection *self, PyObject *args)
     Connection_begin_allow_threads (self);
     answer = cupsDoRequest (self->http, request, "/admin/");
     Connection_end_allow_threads (self);
-    if (PyErr_Occurred ()) {
+    if (_pycups_PyErr_Occurred ()) {
       if (answer)
 	ippDelete (answer);
       return NULL;
@@ -2950,21 +2950,21 @@ do_requesting_user_names (Connection *self, PyObject *args,
   if (UTF8_from_PyObj (&name, nameobj) == NULL)
     return NULL;
 
-  if (!PyList_Check (users)) {
-    PyErr_SetString (PyExc_TypeError, "List required");
+  if (!_pycups_PyList_Check (users)) {
+    _pycups_PyErr_SetString (PyExc_TypeError, "List required");
     return NULL;
   }
   request = add_modify_printer_request (name);
   for (i = 0; i < 2; i++) {
-    num_users = PyList_Size (users);
+    num_users = _pycups_PyList_Size (users);
     if (num_users) {
       attr = ippAddStrings (request, IPP_TAG_PRINTER, IPP_TAG_NAME,
 			    requeststr, num_users, NULL, NULL);
       for (j = 0; j < num_users; j++) {
-	PyObject *username = PyList_GetItem (users, j); // borrowed ref
-	if (!PyUnicode_Check (username) && !PyBytes_Check (username)) {
+	PyObject *username = _pycups_PyList_GetItem (users, j); // borrowed ref
+	if (!_pycups_PyUnicode_Check (username) && !_pycups_PyBytes_Check (username)) {
 	  int k;
-	  PyErr_SetString (PyExc_TypeError, "String required");
+	  _pycups_PyErr_SetString (PyExc_TypeError, "String required");
 	  for (k = 0; k < j; k++) {
 	    free ((void *)ippGetString (attr, k, NULL));
 	    ippSetString(request, &attr, k, NULL);
@@ -2986,7 +2986,7 @@ do_requesting_user_names (Connection *self, PyObject *args,
     Connection_begin_allow_threads (self);
     answer = cupsDoRequest (self->http, request, "/admin/");
     Connection_end_allow_threads (self);
-    if (PyErr_Occurred ()) {
+    if (_pycups_PyErr_Occurred ()) {
       if (answer)
 	ippDelete (answer);
       return NULL;
@@ -3030,16 +3030,16 @@ PyObject_to_string (PyObject *pyvalue)
   char string[BUFSIZ];
   char *value = "{unknown type}";
 
-  if (PyUnicode_Check (pyvalue) || PyBytes_Check (pyvalue)) {
+  if (_pycups_PyUnicode_Check (pyvalue) || _pycups_PyBytes_Check (pyvalue)) {
     UTF8_from_PyObj (&value, pyvalue);
-  } else if (PyBool_Check (pyvalue)) {
+  } else if (_pycups_PyBool_Check (pyvalue)) {
     value = (pyvalue == Py_True) ? "true" : "false";
-  } else if (PyLong_Check (pyvalue)) {
-    long v = PyLong_AsLong (pyvalue);
+  } else if (_pycups_PyLong_Check (pyvalue)) {
+    long v = _pycups_PyLong_AsLong (pyvalue);
     snprintf (string, sizeof (string), "%ld", v);
     value = string;
-  } else if (PyFloat_Check (pyvalue)) {
-    double v = PyFloat_AsDouble (pyvalue);
+  } else if (_pycups_PyFloat_Check (pyvalue)) {
+    double v = _pycups_PyFloat_AsDouble (pyvalue);
     snprintf (string, sizeof (string), "%f", v);
     value = string;
   }
@@ -3078,15 +3078,15 @@ Connection_addPrinterOptionDefault (Connection *self, PyObject *args)
   strcpy (opt + optionlen, suffix);
   request = add_modify_printer_request (name);
   for (i = 0; i < 2; i++) {
-    if (!PyUnicode_Check (pyvalue) && !PyBytes_Check (pyvalue) &&
-	PySequence_Check (pyvalue)) {
+    if (!_pycups_PyUnicode_Check (pyvalue) && !_pycups_PyBytes_Check (pyvalue) &&
+	_pycups_PySequence_Check (pyvalue)) {
       ipp_attribute_t *attr;
-      int len = PySequence_Size (pyvalue);
+      int len = _pycups_PySequence_Size (pyvalue);
       int j;
       attr = ippAddStrings (request, IPP_TAG_PRINTER, IPP_TAG_NAME,
 			    opt, len, NULL, NULL);
       for (j = 0; j < len; j++) {
-	PyObject *each = PySequence_GetItem (pyvalue, j);
+	PyObject *each = _pycups_PySequence_GetItem (pyvalue, j);
 	ippSetString(request, &attr, j, PyObject_to_string (each));
       }
     } else
@@ -3096,7 +3096,7 @@ Connection_addPrinterOptionDefault (Connection *self, PyObject *args)
     Connection_begin_allow_threads (self);
     answer = cupsDoRequest (self->http, request, "/admin/");
     Connection_end_allow_threads (self);
-    if (PyErr_Occurred ()) {
+    if (_pycups_PyErr_Occurred ()) {
       if (answer)
 	ippDelete (answer);
       return NULL;
@@ -3214,7 +3214,7 @@ Connection_getPrinterAttributes (Connection *self, PyObject *args,
     return NULL;
 
   if (nameobj && uriobj) {
-    PyErr_SetString (PyExc_RuntimeError,
+    _pycups_PyErr_SetString (PyExc_RuntimeError,
 		     "name or uri must be specified but not both");
     return NULL;
   }
@@ -3226,7 +3226,7 @@ Connection_getPrinterAttributes (Connection *self, PyObject *args,
     if (UTF8_from_PyObj (&uri, uriobj) == NULL)
       return NULL;
   } else {
-    PyErr_SetString (PyExc_RuntimeError,
+    _pycups_PyErr_SetString (PyExc_RuntimeError,
 		     "name or uri must be specified");
     return NULL;
   }
@@ -3292,7 +3292,7 @@ Connection_getPrinterAttributes (Connection *self, PyObject *args,
     return NULL;
   }
 
-  ret = PyDict_New ();
+  ret = _pycups_PyDict_New ();
   for (attr = ippFirstAttribute (answer); attr; attr = ippNextAttribute (answer)) {
     while (attr && ippGetGroupTag (attr) != IPP_TAG_PRINTER)
       attr = ippNextAttribute (answer);
@@ -3321,10 +3321,10 @@ Connection_getPrinterAttributes (Connection *self, PyObject *args,
 	startobj = PyObj_from_UTF8 (start);
 	endobj = PyObj_from_UTF8 (end);
 	tuple = Py_BuildValue ("(OO)", startobj, endobj);
-	Py_DECREF (startobj);
-	Py_DECREF (endobj);
-	PyDict_SetItemString (ret, "job-sheets-default", tuple);
-	Py_DECREF (tuple);
+	_pycups_wrapper_void(startobj, Py_DECREF);
+	_pycups_wrapper_void(endobj, Py_DECREF);
+	_pycups_PyDict_SetItemString (ret, "job-sheets-default", tuple);
+	_pycups_wrapper_void(tuple, Py_DECREF);
 	continue;
       }
 
@@ -3374,11 +3374,11 @@ Connection_getPrinterAttributes (Connection *self, PyObject *args,
 
       if (is_list) {
 	PyObject *list = PyList_from_attr_values (attr);
-	PyDict_SetItemString (ret, ippGetName (attr), list);
-	Py_DECREF (list);
+	_pycups_PyDict_SetItemString (ret, ippGetName (attr), list);
+	_pycups_wrapper_void(list, Py_DECREF);
       } else {
 	PyObject *val = PyObject_from_attr_value (attr, i);
-	PyDict_SetItemString (ret, ippGetName (attr), val);
+	_pycups_PyDict_SetItemString (ret, ippGetName (attr), val);
       }
     }
 
@@ -3431,7 +3431,7 @@ Connection_addPrinterToClass (Connection *self, PyObject *args)
       for (i = 0; i < ippGetCount (printers); i++) {
 	if (!strcasecmp (ippGetString (printers, i, NULL), printername)) {
 	  ippDelete (answer);
-	  PyErr_SetString (PyExc_RuntimeError, "Printer already in class");
+	  _pycups_PyErr_SetString (PyExc_RuntimeError, "Printer already in class");
 	  free (printername);
 	  return NULL;
 	}
@@ -3472,7 +3472,7 @@ Connection_addPrinterToClass (Connection *self, PyObject *args)
   Connection_begin_allow_threads (self);
   answer = cupsDoRequest (self->http, request, "/admin/");
   Connection_end_allow_threads (self);
-  if (PyErr_Occurred ()) {
+  if (_pycups_PyErr_Occurred ()) {
     if (answer)
       ippDelete (answer);
     return NULL;
@@ -3545,14 +3545,14 @@ Connection_deletePrinterFromClass (Connection *self, PyObject *args)
   free (printername);
   if (!printers || i == ippGetCount (printers)) {
     ippDelete (answer);
-    PyErr_SetString (PyExc_RuntimeError, "Printer not in class");
+    _pycups_PyErr_SetString (PyExc_RuntimeError, "Printer not in class");
     return NULL;
   }
 
   printers = ippFindAttribute (answer, "member-uris", IPP_TAG_URI);
   if (!printers || i >= ippGetCount (printers)) {
     ippDelete (answer);
-    PyErr_SetString (PyExc_RuntimeError, "No member URIs returned");
+    _pycups_PyErr_SetString (PyExc_RuntimeError, "No member URIs returned");
     return NULL;
   }
 
@@ -3673,7 +3673,7 @@ Connection_getDefault (Connection *self, PyObject *args)
     Py_RETURN_NONE;
   } else {
     debugprintf ("<- Connection_getDefault() = \"%s\"\n", def);
-    ret = PyUnicode_FromString (def);
+    ret = _pycups_PyUnicode_FromString (def);
   }
 
   return ret;
@@ -3709,13 +3709,13 @@ Connection_getPPD (Connection *self, PyObject *args)
     if (err)
       set_ipp_error (err, cupsLastErrorString ());
     else
-      PyErr_SetString (PyExc_RuntimeError, "cupsGetPPD2 failed");
+      _pycups_PyErr_SetString (PyExc_RuntimeError, "cupsGetPPD2 failed");
 
     debugprintf ("<- Connection_getPPD() (error)\n");
     return NULL;
   }
 
-  ret = PyUnicode_FromString (ppdfile);
+  ret = _pycups_PyUnicode_FromString (ppdfile);
   debugprintf ("<- Connection_getPPD() = %s\n", ppdfile);
   return ret;
 }
@@ -3742,8 +3742,8 @@ Connection_getPPD3 (Connection *self, PyObject *args, PyObject *kwds)
     return NULL;
 
   if (fmodtime) {
-    double d = PyFloat_AsDouble (fmodtime);
-    if (PyErr_Occurred()) {
+    double d = _pycups_PyFloat_AsDouble (fmodtime);
+    if (_pycups_PyErr_Occurred()) {
       free (printer);
       return NULL;
     }
@@ -3759,7 +3759,7 @@ Connection_getPPD3 (Connection *self, PyObject *args, PyObject *kwds)
     }
   if (filename) {
     if (strlen (filename) > sizeof (fname)) {
-      PyErr_SetString (PyExc_TypeError, "overlength filename");
+      _pycups_PyErr_SetString (PyExc_TypeError, "overlength filename");
       free (printer);
       free (filename);
       return NULL;
@@ -3777,34 +3777,34 @@ Connection_getPPD3 (Connection *self, PyObject *args, PyObject *kwds)
   free (printer);
   free (filename);
 
-  ret = PyTuple_New (3);
+  ret = _pycups_PyTuple_New (3);
   if (!ret)
     return NULL;
 
-  obj = PyLong_FromLong ((long) status);
+  obj = _pycups_PyLong_FromLong ((long) status);
 
+  if (!obj) {
+    _pycups_wrapper_void(ret, Py_DECREF);
+    return NULL;
+  }
+
+  _pycups_PyTuple_SetItem (ret, 0, obj);
+
+  obj = _pycups_PyFloat_FromDouble ((double) modtime);
   if (!obj) {
     Py_DECREF (ret);
     return NULL;
   }
 
-  PyTuple_SetItem (ret, 0, obj);
+  _pycups_PyTuple_SetItem (ret, 1, obj);
 
-  obj = PyFloat_FromDouble ((double) modtime);
+  obj = _pycups_PyUnicode_FromString (fname);
   if (!obj) {
-    Py_DECREF (ret);
+    _pycups_wrapper_void(ret, Py_DECREF);
     return NULL;
   }
 
-  PyTuple_SetItem (ret, 1, obj);
-
-  obj = PyUnicode_FromString (fname);
-  if (!obj) {
-    Py_DECREF (ret);
-    return NULL;
-  }
-
-  PyTuple_SetItem (ret, 2, obj);
+  _pycups_PyTuple_SetItem (ret, 2, obj);
 
   debugprintf ("<- Connection_getPPD3() = (%d,%ld,%s)\n",
 	       status, modtime, fname);
@@ -3985,14 +3985,14 @@ Connection_adminExportSamba (Connection *self, PyObject *args)
     free (server);
     free (user);
     free (password);
-    PyErr_SetString(PyExc_RuntimeError,
+    _pycups_PyErr_SetString(PyExc_RuntimeError,
                     "name, samba_server, samba_username, samba_password "
                     "must be specified");
     return NULL;
   }
 
   if (!cupsAdminCreateWindowsPPD(self->http, name, ppdfile, sizeof(ppdfile))) {
-    PyErr_SetString(PyExc_RuntimeError,
+    _pycups_PyErr_SetString(PyExc_RuntimeError,
                     "No PPD file found for the printer");
     return NULL;
   }
@@ -4017,7 +4017,7 @@ Connection_adminExportSamba (Connection *self, PyObject *args)
     if (str[strlen(str) -1] == '\n') {
       str[strlen(str) -1] = '\0';
     }
-    PyErr_SetString (PyExc_RuntimeError, str);
+    _pycups_PyErr_SetString (PyExc_RuntimeError, str);
     debugprintf ("<- Connection_adminExportSamba() EXCEPTION\n");
     return NULL;
   }
@@ -4029,7 +4029,7 @@ Connection_adminExportSamba (Connection *self, PyObject *args)
 static PyObject *
 Connection_adminGetServerSettings (Connection *self)
 {
-  PyObject *ret = PyDict_New ();
+  PyObject *ret = _pycups_PyDict_New ();
   int num_settings, i;
   cups_option_t *settings;
   debugprintf ("-> Connection_adminGetServerSettings()\n");
@@ -4037,9 +4037,9 @@ Connection_adminGetServerSettings (Connection *self)
   cupsAdminGetServerSettings (self->http, &num_settings, &settings);
   Connection_end_allow_threads (self);
   for (i = 0; i < num_settings; i++) {
-    PyObject *string = PyUnicode_FromString (settings[i].value);
-    PyDict_SetItemString (ret, settings[i].name, string);
-    Py_DECREF (string);
+    PyObject *string = _pycups_PyUnicode_FromString (settings[i].value);
+    _pycups_PyDict_SetItemString (ret, settings[i].name, string);
+    _pycups_wrapper_void(string, Py_DECREF);
   }
 
   cupsFreeOptions (num_settings, settings);
@@ -4057,18 +4057,18 @@ Connection_adminSetServerSettings (Connection *self, PyObject *args)
   cups_option_t *settings = NULL;
   if (!PyArg_ParseTuple (args, "O", &dict))
     return NULL;
-  if (!PyDict_Check (dict)) {
-    PyErr_SetString (PyExc_TypeError, "Expecting dict");
+  if (!_pycups_PyDict_Check (dict)) {
+    _pycups_PyErr_SetString (PyExc_TypeError, "Expecting dict");
     return NULL;
   }
 
   debugprintf ("-> Connection_adminSetServerSettings()\n");
-  while (PyDict_Next (dict, &pos, &key, &val)) {
+  while (_pycups_PyDict_Next (dict, &pos, &key, &val)) {
     char *name, *value;
-    if ((!PyUnicode_Check (key) && !PyBytes_Check (key)) ||
-        (!PyUnicode_Check (val) && !PyBytes_Check (val))) {
+    if ((!_pycups_PyUnicode_Check (key) && !_pycups_PyBytes_Check (key)) ||
+        (!_pycups_PyUnicode_Check (val) && !_pycups_PyBytes_Check (val))) {
       cupsFreeOptions (num_settings, settings);
-      PyErr_SetString (PyExc_TypeError, "Keys and values must be strings");
+      _pycups_PyErr_SetString (PyExc_TypeError, "Keys and values must be strings");
       debugprintf ("<- Connection_adminSetServerSettings() EXCEPTION\n");
       return NULL;
     }
@@ -4090,7 +4090,7 @@ Connection_adminSetServerSettings (Connection *self, PyObject *args)
   Connection_end_allow_threads (self);
   if (!ret) {
     cupsFreeOptions (num_settings, settings);
-    PyErr_SetString (PyExc_RuntimeError, "Failed to set settings");
+    _pycups_PyErr_SetString (PyExc_RuntimeError, "Failed to set settings");
     debugprintf ("<- Connection_adminSetServerSettings() EXCEPTION\n");
     return NULL;
   }
@@ -4119,8 +4119,8 @@ Connection_getSubscriptions (Connection *self, PyObject *args, PyObject *kwds)
   if (UTF8_from_PyObj (&uri, uriobj) == NULL)
     return NULL;
 
-  if (my_subscriptions && !PyBool_Check (my_subscriptions)) {
-    PyErr_SetString (PyExc_TypeError, "my_subscriptions must be a bool");
+  if (my_subscriptions && !_pycups_PyBool_Check (my_subscriptions)) {
+    _pycups_PyErr_SetString (PyExc_TypeError, "my_subscriptions must be a bool");
     return NULL;
   }
 
@@ -4151,7 +4151,7 @@ Connection_getSubscriptions (Connection *self, PyObject *args, PyObject *kwds)
     return NULL;
   }
 
-  result = PyList_New (0);
+  result = _pycups_PyList_New (0);
   for (attr = ippFirstAttribute (answer); attr; attr = ippNextAttribute (answer))
     if (ippGetGroupTag (attr) == IPP_TAG_SUBSCRIPTION)
       break;
@@ -4162,8 +4162,8 @@ Connection_getSubscriptions (Connection *self, PyObject *args, PyObject *kwds)
     if (ippGetGroupTag (attr) == IPP_TAG_ZERO) {
       // End of subscription.
       if (subscription) {
-	PyList_Append (result, subscription);
-	Py_DECREF (subscription);
+	_pycups_PyList_Append (result, subscription);
+	_pycups_wrapper_void(subscription, Py_DECREF);
       }
 
       subscription = NULL;
@@ -4180,15 +4180,15 @@ Connection_getSubscriptions (Connection *self, PyObject *args, PyObject *kwds)
       continue;
 
     if (!subscription)
-      subscription = PyDict_New ();
+      subscription = _pycups_PyDict_New ();
 
-    PyDict_SetItemString (subscription, ippGetName (attr), obj);
-    Py_DECREF (obj);
+    _pycups_PyDict_SetItemString (subscription, ippGetName (attr), obj);
+    _pycups_wrapper_void(obj, Py_DECREF);
   }
 
   if (subscription) {
-    PyList_Append (result, subscription);
-    Py_DECREF (subscription);
+    _pycups_PyList_Append (result, subscription);
+    _pycups_wrapper_void(subscription, Py_DECREF);
   }
 
   ippDelete (answer);
@@ -4237,16 +4237,16 @@ Connection_createSubscription (Connection *self, PyObject *args,
   }
 
   if (events) {
-    if (!PyList_Check (events)) {
-      PyErr_SetString (PyExc_TypeError, "events must be a list");
+    if (!_pycups_PyList_Check (events)) {
+      _pycups_PyErr_SetString (PyExc_TypeError, "events must be a list");
       return NULL;
     }
 
-    n = PyList_Size (events);
+    n = _pycups_PyList_Size (events);
     for (i = 0; i < n; i++) {
-      PyObject *event = PyList_GetItem (events, i);
-      if (!PyUnicode_Check (event) && !PyBytes_Check (event)) {
-	PyErr_SetString (PyExc_TypeError, "events must be a list of strings");
+      PyObject *event = _pycups_PyList_GetItem (events, i);
+      if (!_pycups_PyUnicode_Check (event) && !_pycups_PyBytes_Check (event)) {
+	_pycups_PyErr_SetString (PyExc_TypeError, "events must be a list of strings");
 	return NULL;
       }
     }
@@ -4280,7 +4280,7 @@ Connection_createSubscription (Connection *self, PyObject *args,
 			  IPP_TAG_KEYWORD, "notify-events",
 			  n, NULL, NULL);
     for (i = 0; i < n; i++) {
-      PyObject *event = PyList_GetItem (events, i);
+      PyObject *event = _pycups_PyList_GetItem (events, i);
       ippSetString(request, &attr, i, UTF8_from_PyObj (&tmp, event));
       free(tmp);
     }
@@ -4324,7 +4324,7 @@ Connection_createSubscription (Connection *self, PyObject *args,
 
   ippDelete (answer);
   debugprintf ("<- Connection_createSubscription() = %d\n", i);
-  return PyLong_FromLong (i);
+  return _pycups_PyLong_FromLong (i);
 }
 
 static PyObject *
@@ -4341,32 +4341,32 @@ Connection_getNotifications (Connection *self, PyObject *args, PyObject *kwds)
 				    &subscription_ids, &sequence_numbers))
     return NULL;
 
-  if (!PyList_Check (subscription_ids)) {
-    PyErr_SetString (PyExc_TypeError, "subscriptions_ids must be a list");
+  if (!_pycups_PyList_Check (subscription_ids)) {
+    _pycups_PyErr_SetString (PyExc_TypeError, "subscriptions_ids must be a list");
     return NULL;
   }
 
-  num_ids = PyList_Size (subscription_ids);
+  num_ids = _pycups_PyList_Size (subscription_ids);
   for (i = 0; i < num_ids; i++) {
-    PyObject *id = PyList_GetItem (subscription_ids, i);
-    if (!PyLong_Check (id)) {
-      PyErr_SetString (PyExc_TypeError, "subscription_ids must be a list "
+    PyObject *id = _pycups_PyList_GetItem (subscription_ids, i);
+    if (!_pycups_PyLong_Check (id)) {
+      _pycups_PyErr_SetString (PyExc_TypeError, "subscription_ids must be a list "
 		       "of integers");
       return NULL;
     }
   }
 
   if (sequence_numbers) {
-    if (!PyList_Check (sequence_numbers)) {
-      PyErr_SetString (PyExc_TypeError, "sequence_numbers must be a list");
+    if (!_pycups_PyList_Check (sequence_numbers)) {
+      _pycups_PyErr_SetString (PyExc_TypeError, "sequence_numbers must be a list");
       return NULL;
     }
 
-    num_seqs = PyList_Size (sequence_numbers);
+    num_seqs = _pycups_PyList_Size (sequence_numbers);
     for (i = 0; i < num_seqs; i++) {
-      PyObject *id = PyList_GetItem (sequence_numbers, i);
-      if (!PyLong_Check (id)) {
-	PyErr_SetString (PyExc_TypeError, "sequence_numbers must be a list "
+      PyObject *id = _pycups_PyList_GetItem (sequence_numbers, i);
+      if (!_pycups_PyLong_Check (id)) {
+	_pycups_PyErr_SetString (PyExc_TypeError, "sequence_numbers must be a list "
 			 "of integers");
 	return NULL;
       }
@@ -4383,16 +4383,16 @@ Connection_getNotifications (Connection *self, PyObject *args, PyObject *kwds)
   attr = ippAddIntegers (request, IPP_TAG_OPERATION, IPP_TAG_INTEGER,
 			 "notify-subscription-ids", num_ids, NULL);
   for (i = 0; i < num_ids; i++) {
-    PyObject *id = PyList_GetItem (subscription_ids, i);
-    ippSetInteger (request, &attr, i, PyLong_AsLong (id));
+    PyObject *id = _pycups_PyList_GetItem (subscription_ids, i);
+    ippSetInteger (request, &attr, i, _pycups_PyLong_AsLong (id));
   }
 
   if (sequence_numbers) {
     attr = ippAddIntegers (request, IPP_TAG_OPERATION, IPP_TAG_INTEGER,
 			   "notify-sequence-numbers", num_seqs, NULL);
     for (i = 0; i < num_seqs; i++) {
-      PyObject *num = PyList_GetItem (sequence_numbers, i);
-      ippSetInteger (request, &attr, i, PyLong_AsLong (num));
+      PyObject *num = _pycups_PyList_GetItem (sequence_numbers, i);
+      ippSetInteger (request, &attr, i, _pycups_PyLong_AsLong (num));
     }
   }
   
@@ -4408,24 +4408,24 @@ Connection_getNotifications (Connection *self, PyObject *args, PyObject *kwds)
     return NULL;
   }
 
-  result = PyDict_New ();
+  result = _pycups_PyDict_New ();
 
   // Result-wide attributes.
   attr = ippFindAttribute (answer, "notify-get-interval", IPP_TAG_INTEGER);
   if (attr) {
-    PyObject *val = PyLong_FromLong (ippGetInteger (attr, 0));
-    PyDict_SetItemString (result, ippGetName (attr), val);
-    Py_DECREF (val);
+    PyObject *val = _pycups_PyLong_FromLong (ippGetInteger (attr, 0));
+    _pycups_PyDict_SetItemString (result, ippGetName (attr), val);
+    _pycups_wrapper_void(val, Py_DECREF);
   }
 
   attr = ippFindAttribute (answer, "printer-up-time", IPP_TAG_INTEGER);
   if (attr) {
-    PyObject *val = PyLong_FromLong (ippGetInteger (attr, 0));
-    PyDict_SetItemString (result, ippGetName (attr), val);
-    Py_DECREF (val);
+    PyObject *val = _pycups_PyLong_FromLong (ippGetInteger (attr, 0));
+    _pycups_PyDict_SetItemString (result, ippGetName (attr), val);
+    _pycups_wrapper_void(val, Py_DECREF);
   }
 
-  events = PyList_New (0);
+  events = _pycups_PyList_New (0);
   for (attr = ippFirstAttribute (answer); attr; attr = ippNextAttribute (answer))
     if (ippGetGroupTag (attr) == IPP_TAG_EVENT_NOTIFICATION)
       break;
@@ -4436,8 +4436,8 @@ Connection_getNotifications (Connection *self, PyObject *args, PyObject *kwds)
     if (ippGetGroupTag (attr) == IPP_TAG_ZERO) {
       // End of event notification.
       if (event) {
-	PyList_Append (events, event);
-	Py_DECREF (event);
+	_pycups_PyList_Append (events, event);
+	_pycups_wrapper_void(event, Py_DECREF);
       }
 
       event = NULL;
@@ -4457,20 +4457,20 @@ Connection_getNotifications (Connection *self, PyObject *args, PyObject *kwds)
       continue;
 
     if (!event)
-      event = PyDict_New ();
+      event = _pycups_PyDict_New ();
 
-    PyDict_SetItemString (event, ippGetName (attr), obj);
-    Py_DECREF (obj);
+    _pycups_PyDict_SetItemString (event, ippGetName (attr), obj);
+    _pycups_wrapper_void(obj, Py_DECREF);
   }
 
   if (event) {
-    PyList_Append (events, event);
-    Py_DECREF (event);
+    _pycups_PyList_Append (events, event);
+    _pycups_wrapper_void(event, Py_DECREF);
   }
 
   ippDelete (answer);
-  PyDict_SetItemString (result, "events", events);
-  Py_DECREF (events);
+  _pycups_PyDict_SetItemString (result, "events", events);
+  _pycups_wrapper_void(events, Py_DECREF);
   debugprintf ("<- Connection_getNotifications()\n");
   return result;
 }
@@ -4585,22 +4585,22 @@ Connection_printFile (Connection *self, PyObject *args, PyObject *kwds)
     return NULL;
   }
 
-  if (!PyDict_Check (options_obj)) {
+  if (!_pycups_PyDict_Check (options_obj)) {
     free (title);
     free (filename);
     free (printer);
-    PyErr_SetString (PyExc_TypeError, "options must be a dict");
+    _pycups_PyErr_SetString (PyExc_TypeError, "options must be a dict");
     return NULL;
   }
-  while (PyDict_Next (options_obj, &pos, &key, &val)) {
+  while (_pycups_PyDict_Next (options_obj, &pos, &key, &val)) {
     char *name, *value;
-    if ((!PyUnicode_Check (key) && !PyBytes_Check (key)) ||
-        (!PyUnicode_Check (val) && !PyBytes_Check (val))) {
+    if ((!_pycups_PyUnicode_Check (key) && !_pycups_PyBytes_Check (key)) ||
+        (!_pycups_PyUnicode_Check (val) && !_pycups_PyBytes_Check (val))) {
       cupsFreeOptions (num_settings, settings);
       free (title);
       free (filename);
       free (printer);
-      PyErr_SetString (PyExc_TypeError, "Keys and values must be strings");
+      _pycups_PyErr_SetString (PyExc_TypeError, "Keys and values must be strings");
       return NULL;
     }
 
@@ -4630,7 +4630,7 @@ Connection_printFile (Connection *self, PyObject *args, PyObject *kwds)
   free (title);
   free (filename);
   free (printer);
-  return PyLong_FromLong (jobid);
+  return _pycups_PyLong_FromLong (jobid);
 }
 
 static void
@@ -4668,20 +4668,20 @@ Connection_printFiles (Connection *self, PyObject *args, PyObject *kwds)
   if (UTF8_from_PyObj (&printer, printer_obj) == NULL)
     return NULL;
 
-  if (!PyList_Check (filenames_obj)) {
+  if (!_pycups_PyList_Check (filenames_obj)) {
     free (printer);
-    PyErr_SetString (PyExc_TypeError, "filenames must be a list");
+    _pycups_PyErr_SetString (PyExc_TypeError, "filenames must be a list");
     return NULL;
   }
-  num_filenames = PyList_Size (filenames_obj);
+  num_filenames = _pycups_PyList_Size (filenames_obj);
   if (num_filenames == 0) {
     free (printer);
-    PyErr_SetString (PyExc_RuntimeError, "filenames list is empty");
+    _pycups_PyErr_SetString (PyExc_RuntimeError, "filenames list is empty");
     return NULL;
   }
   filenames = malloc (num_filenames * sizeof(char*));
   for (pos = 0; pos < num_filenames; ++pos) {
-    PyObject *filename_obj = PyList_GetItem(filenames_obj, pos);
+    PyObject *filename_obj = _pycups_PyList_GetItem(filenames_obj, pos);
     if (UTF8_from_PyObj (&filenames[pos], filename_obj) == NULL) {
       free_string_list (pos, filenames);
       free (printer);
@@ -4694,22 +4694,22 @@ Connection_printFiles (Connection *self, PyObject *args, PyObject *kwds)
     return NULL;
   }
 
-  if (!PyDict_Check (options_obj)) {
+  if (!_pycups_PyDict_Check (options_obj)) {
     free (title);
     free_string_list (num_filenames, filenames);
     free (printer);
-    PyErr_SetString (PyExc_TypeError, "options must be a dict");
+    _pycups_PyErr_SetString (PyExc_TypeError, "options must be a dict");
     return NULL;
   }
-  while (PyDict_Next (options_obj, &pos, &key, &val)) {
+  while (_pycups_PyDict_Next (options_obj, &pos, &key, &val)) {
     char *name, *value;
-    if ((!PyUnicode_Check (key) && !PyBytes_Check (key)) ||
-        (!PyUnicode_Check (val) && !PyBytes_Check (val))) {
+    if ((!_pycups_PyUnicode_Check (key) && !_pycups_PyBytes_Check (key)) ||
+        (!_pycups_PyUnicode_Check (val) && !_pycups_PyBytes_Check (val))) {
       cupsFreeOptions (num_settings, settings);
       free (title);
       free_string_list (num_filenames, filenames);
       free (printer);
-      PyErr_SetString (PyExc_TypeError, "Keys and values must be strings");
+      _pycups_PyErr_SetString (PyExc_TypeError, "Keys and values must be strings");
       return NULL;
     }
 
@@ -4740,7 +4740,7 @@ Connection_printFiles (Connection *self, PyObject *args, PyObject *kwds)
   free (title);
   free_string_list (num_filenames, filenames);
   free (printer);
-  return PyLong_FromLong (jobid);
+  return _pycups_PyLong_FromLong (jobid);
 }
 
 PyMethodDef Connection_methods[] =
@@ -5597,7 +5597,7 @@ Dest_repr (Dest *self)
 			  self->instance ? "/" : "",
 			  self->instance ? self->instance : "",
 			  self->is_default ? " (default)" : "");
-  return PyUnicode_FromString (buffer);
+  return _pycups_PyUnicode_FromString (buffer);
 }
 
 //////////
@@ -5607,14 +5607,14 @@ Dest_repr (Dest *self)
 static PyObject *
 Dest_getName (Dest *self, void *closure)
 {
-  return PyUnicode_FromString (self->destname);
+  return _pycups_PyUnicode_FromString (self->destname);
 }
 
 static PyObject *
 Dest_getInstance (Dest *self, void *closure)
 {
   if (self->instance)
-    return PyUnicode_FromString (self->instance);
+    return _pycups_PyUnicode_FromString (self->instance);
 
   Py_RETURN_NONE;
 }
@@ -5622,18 +5622,18 @@ Dest_getInstance (Dest *self, void *closure)
 static PyObject *
 Dest_getIsDefault (Dest *self, void *closure)
 {
-  return PyBool_FromLong (self->is_default);
+  return _pycups_PyBool_FromLong (self->is_default);
 }
 
 static PyObject *
 Dest_getOptions (Dest *self, void *closure)
 {
-  PyObject *pyoptions = PyDict_New ();
+  PyObject *pyoptions = _pycups_PyDict_New ();
   int i;
   for (i = 0; i < self->num_options; i++) {
-    PyObject *string = PyUnicode_FromString (self->value[i]);
-    PyDict_SetItemString (pyoptions, self->name[i], string);
-    Py_DECREF (string);
+    PyObject *string = _pycups_PyUnicode_FromString (self->value[i]);
+    _pycups_PyDict_SetItemString (pyoptions, self->name[i], string);
+    _pycups_wrapper_void(string, Py_DECREF);
   }
 
   return pyoptions;

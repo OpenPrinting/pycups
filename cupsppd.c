@@ -106,13 +106,13 @@ ppd_encoding_is_utf8 (PPD *ppd)
 static PyObject *
 cautious_PyUnicode_DecodeUTF8 (const char *str, size_t len)
 {
-  PyObject *ret = PyUnicode_DecodeUTF8 (str, len, NULL);
+  PyObject *ret = _pycups_PyUnicode_DecodeUTF8 (str, len, NULL);
   if (ret == NULL) {
     // It wasn't UTF-8 after all.  Just make the string safe for ASCII.
     char *safe;
     size_t i;
 
-    PyErr_Clear ();
+    _pycups_PyErr_Clear ();
     safe = malloc (len + 1);
     for (i = 0; i < len; i++) {
       unsigned char ch = str[i];
@@ -122,7 +122,7 @@ cautious_PyUnicode_DecodeUTF8 (const char *str, size_t len)
       safe[i] = ch;
     }
     safe[i] = '\0';
-    ret = PyUnicode_DecodeUTF8 (safe, len, NULL);
+    ret = _pycups_PyUnicode_DecodeUTF8 (safe, len, NULL);
     printf ("Bad UTF-8 string \"%s\" changed to \"%s\"\n", str, safe);
     free (safe);
   }
@@ -153,7 +153,7 @@ make_PyUnicode_from_ppd_string (PPD *ppd, const char *ppdstr)
   if (iconv (cdf, (char **) &ppdstr, &len,
 	     &outbufptr, &outbytesleft) == (size_t) -1) {
     free (outbuf);
-    return PyErr_SetFromErrno (PyExc_RuntimeError);
+    return _pycups_PyErr_SetFromErrno (PyExc_RuntimeError);
   }
 
   ret = cautious_PyUnicode_DecodeUTF8 (outbuf, origleft - outbytesleft);
@@ -222,7 +222,7 @@ PPD_init (PPD *self, PyObject *args, PyObject *kwds)
 
   self->file = fopen (filename, "r");
   if (!self->file) {
-    PyErr_SetString (PyExc_RuntimeError, "fopen failed");
+    _pycups_PyErr_SetString (PyExc_RuntimeError, "fopen failed");
     free (filename);
     return -1;
   }
@@ -233,7 +233,7 @@ PPD_init (PPD *self, PyObject *args, PyObject *kwds)
   if (!self->ppd) {
     fclose (self->file);
     self->file = NULL;
-    PyErr_SetString (PyExc_RuntimeError, "ppdOpenFile failed");
+    _pycups_PyErr_SetString (PyExc_RuntimeError, "ppdOpenFile failed");
     return -1;
   }
   self->conv_from = self->conv_to = NULL;
@@ -269,7 +269,7 @@ PPD_localize (PPD *self)
 {
   if (!ppdLocalize (self->ppd))
     Py_RETURN_NONE;
-  return PyErr_SetFromErrno (PyExc_RuntimeError);
+  return _pycups_PyErr_SetFromErrno (PyExc_RuntimeError);
 }
 
 static PyObject *
@@ -359,14 +359,14 @@ PPD_markOption (PPD *self, PyObject *args)
   PyMem_Free (name);
   if (!encname) {
     PyMem_Free (value); 
-    return PyErr_SetFromErrno (PyExc_RuntimeError);
+    return _pycups_PyErr_SetFromErrno (PyExc_RuntimeError);
   }
 
   encvalue = utf8_to_ppd_encoding (self, value);
   PyMem_Free (value);
   if (!encvalue) {
     free (encname);
-    return PyErr_SetFromErrno (PyExc_RuntimeError);
+    return _pycups_PyErr_SetFromErrno (PyExc_RuntimeError);
   }
 
   conflicts = ppdMarkOption (self->ppd, encname, encvalue);
@@ -378,7 +378,7 @@ PPD_markOption (PPD *self, PyObject *args)
 static PyObject *
 PPD_conflicts (PPD *self)
 {
-  return PyLong_FromLong (ppdConflicts (self->ppd));
+  return _pycups_PyLong_FromLong (ppdConflicts (self->ppd));
 }
 
 static PyObject *
@@ -400,7 +400,7 @@ PPD_findOption (PPD *self, PyObject *args)
   if (opt) {
     PyObject *args = Py_BuildValue ("()");
     PyObject *kwlist = Py_BuildValue ("{}");
-    Option *optobj = (Option *) PyType_GenericNew (&cups_OptionType,
+    Option *optobj = (Option *) _pycups_PyType_GenericNew (&cups_OptionType,
 						   args, kwlist);
     Py_DECREF (args);
     Py_DECREF (kwlist);
@@ -446,7 +446,7 @@ PPD_findAttr (PPD *self, PyObject *args, PyObject *kwds)
   if (attr) {
     PyObject *largs = Py_BuildValue ("()");
     PyObject *lkwlist = Py_BuildValue ("{}");
-    Attribute *attrobj = (Attribute *) PyType_GenericNew (&cups_AttributeType,
+    Attribute *attrobj = (Attribute *) _pycups_PyType_GenericNew (&cups_AttributeType,
 							  largs, lkwlist);
     Py_DECREF (largs);
     Py_DECREF (lkwlist);
@@ -492,7 +492,7 @@ PPD_findNextAttr (PPD *self, PyObject *args, PyObject *kwds)
   if (attr) {
     PyObject *largs = Py_BuildValue ("()");
     PyObject *lkwlist = Py_BuildValue ("{}");
-    Attribute *attrobj = (Attribute *) PyType_GenericNew (&cups_AttributeType,
+    Attribute *attrobj = (Attribute *) _pycups_PyType_GenericNew (&cups_AttributeType,
 							  largs, lkwlist);
     Py_DECREF (largs);
     Py_DECREF (lkwlist);
@@ -599,7 +599,7 @@ PPD_emitString (PPD *self, PyObject *args)
   emitted = ppdEmitString(self->ppd, section, min_order);
 
   if (emitted) {
-    ret = PyUnicode_FromString (emitted);
+    ret = _pycups_PyUnicode_FromString (emitted);
     free (emitted);
   } else {
     Py_RETURN_NONE;
@@ -622,14 +622,14 @@ PPD_emit (PPD *self, PyObject *args)
   if (!PyArg_ParseTuple (args, "Oi", &pyFile, &section))
     return NULL;
 
-  int fd = PyObject_AsFileDescriptor(pyFile);
+  int fd = _pycups_PyObject_AsFileDescriptor(pyFile);
   f = fdopen(fd, "w");
   if (!f)
-    return PyErr_SetFromErrno (PyExc_RuntimeError);
+    return _pycups_PyErr_SetFromErrno (PyExc_RuntimeError);
 
   if (!ppdEmit(self->ppd, f, section))
     Py_RETURN_NONE;
-  return PyErr_SetFromErrno (PyExc_RuntimeError);
+  return _pycups_PyErr_SetFromErrno (PyExc_RuntimeError);
 }
 
 /*
@@ -648,14 +648,14 @@ PPD_emitAfterOrder (PPD *self, PyObject *args)
   if (!PyArg_ParseTuple (args, "Oiif", &pyFile, &section, &limit, &min_order))
     return NULL;
 
-  int fd = PyObject_AsFileDescriptor(pyFile);
+  int fd = _pycups_PyObject_AsFileDescriptor(pyFile);
   f = fdopen(fd, "w");
   if (!f)
-    return PyErr_SetFromErrno (PyExc_RuntimeError);
+    return _pycups_PyErr_SetFromErrno (PyExc_RuntimeError);
 
   if (!ppdEmitAfterOrder(self->ppd, f, section, limit, min_order))
     Py_RETURN_NONE;
-  return PyErr_SetFromErrno (PyExc_RuntimeError);
+  return _pycups_PyErr_SetFromErrno (PyExc_RuntimeError);
 }
 
 /*
@@ -673,7 +673,7 @@ PPD_emitFd (PPD *self, PyObject *args)
 
   if (!ppdEmitFd(self->ppd, f, section))
     Py_RETURN_NONE;
-  return PyErr_SetFromErrno (PyExc_RuntimeError);
+  return _pycups_PyErr_SetFromErrno (PyExc_RuntimeError);
 }
 
 /*
@@ -702,17 +702,17 @@ PPD_emitJCL (PPD *self, PyObject *args)
     return NULL;
   }
 
-  int fd = PyObject_AsFileDescriptor(pyFile);
+  int fd = _pycups_PyObject_AsFileDescriptor(pyFile);
   f = fdopen(fd, "w");
   if (!f)
-    return PyErr_SetFromErrno (PyExc_RuntimeError);
+    return _pycups_PyErr_SetFromErrno (PyExc_RuntimeError);
 
   if (!ppdEmitJCL(self->ppd, f, job_id, user, title))
     Py_RETURN_NONE;
 
   free (user);
   free (title);
-  return PyErr_SetFromErrno (PyExc_RuntimeError);
+  return _pycups_PyErr_SetFromErrno (PyExc_RuntimeError);
 }
 
 /*
@@ -728,14 +728,14 @@ PPD_emitJCLEnd (PPD *self, PyObject *args)
   if (!PyArg_ParseTuple (args, "O", &pyFile))
     return NULL;
 
-  int fd = PyObject_AsFileDescriptor(pyFile);
+  int fd = _pycups_PyObject_AsFileDescriptor(pyFile);
   f = fdopen(fd, "w");
   if (!f)
-    return PyErr_SetFromErrno (PyExc_RuntimeError);
+    return _pycups_PyErr_SetFromErrno (PyExc_RuntimeError);
 
   if (!ppdEmitJCLEnd(self->ppd, f))
     Py_RETURN_NONE;
-  return PyErr_SetFromErrno (PyExc_RuntimeError);
+  return _pycups_PyErr_SetFromErrno (PyExc_RuntimeError);
 }
 
 PyObject *
@@ -751,11 +751,11 @@ PPD_writeFd (PPD *self, PyObject *args)
 
   dfd = dup (fd);
   if (dfd == -1)
-    return PyErr_SetFromErrno (PyExc_RuntimeError);
+    return _pycups_PyErr_SetFromErrno (PyExc_RuntimeError);
 
   out = fdopen (dfd, "w");
   if (!out)
-    return PyErr_SetFromErrno (PyExc_RuntimeError);
+    return _pycups_PyErr_SetFromErrno (PyExc_RuntimeError);
 
   rewind (self->file);
   while (!feof (self->file)) {
@@ -810,7 +810,7 @@ PPD_writeFd (PPD *self, PyObject *args)
 static PyObject *
 PPD_getConstraints (PPD *self, void *closure)
 {
-  PyObject *ret = PyList_New (0);
+  PyObject *ret = _pycups_PyList_New (0);
   ppd_const_t *c;
   int i;
   for (i = 0, c = self->ppd->consts;
@@ -818,14 +818,14 @@ PPD_getConstraints (PPD *self, void *closure)
        i++, c++) {
     PyObject *args = Py_BuildValue ("()");
     PyObject *kwlist = Py_BuildValue ("{}");
-    Constraint *cns = (Constraint *) PyType_GenericNew (&cups_ConstraintType,
+    Constraint *cns = (Constraint *) _pycups_PyType_GenericNew (&cups_ConstraintType,
 							args, kwlist);
     Py_DECREF (args);
     Py_DECREF (kwlist);
     cns->constraint = c;
     cns->ppd = self;
     Py_INCREF (self);
-    PyList_Append (ret, (PyObject *) cns);
+    _pycups_PyList_Append (ret, (PyObject *) cns);
   }
 
   return ret;
@@ -834,12 +834,12 @@ PPD_getConstraints (PPD *self, void *closure)
 static PyObject *
 PPD_getAttributes (PPD *self, void *closure)
 {
-  PyObject *ret = PyList_New (0);
+  PyObject *ret = _pycups_PyList_New (0);
   int i;
   for (i = 0; i < self->ppd->num_attrs; i++) {
     PyObject *args = Py_BuildValue ("()");
     PyObject *kwlist = Py_BuildValue ("{}");
-    Attribute *as = (Attribute *) PyType_GenericNew (&cups_AttributeType,
+    Attribute *as = (Attribute *) _pycups_PyType_GenericNew (&cups_AttributeType,
 						     args, kwlist);
     ppd_attr_t *a = self->ppd->attrs[i];
     Py_DECREF (args);
@@ -847,7 +847,7 @@ PPD_getAttributes (PPD *self, void *closure)
     as->attribute = a;
     as->ppd = self;
     Py_INCREF (self);
-    PyList_Append (ret, (PyObject *) as);
+    _pycups_PyList_Append (ret, (PyObject *) as);
   }
 
   return ret;
@@ -856,7 +856,7 @@ PPD_getAttributes (PPD *self, void *closure)
 static PyObject *
 PPD_getOptionGroups (PPD *self, void *closure)
 {
-  PyObject *ret = PyList_New (0);
+  PyObject *ret = _pycups_PyList_New (0);
   ppd_group_t *group;
   int i;
 
@@ -865,14 +865,14 @@ PPD_getOptionGroups (PPD *self, void *closure)
        i++, group++) {
     PyObject *args = Py_BuildValue ("()");
     PyObject *kwlist = Py_BuildValue ("{}");
-    Group *grp = (Group *) PyType_GenericNew (&cups_GroupType,
+    Group *grp = (Group *) _pycups_PyType_GenericNew (&cups_GroupType,
 					      args, kwlist);
     Py_DECREF (args);
     Py_DECREF (kwlist);
     grp->group = group;
     grp->ppd = self;
     Py_INCREF (self);
-    PyList_Append (ret, (PyObject *) grp);
+    _pycups_PyList_Append (ret, (PyObject *) grp);
   }
 
   return ret;
@@ -1119,12 +1119,12 @@ Option_repr (Option *self)
 {
   ppd_option_t *option = self->option;
   if (!option)
-    return PyUnicode_FromString ("<cups.Option>");
+    return _pycups_PyUnicode_FromString ("<cups.Option>");
 
   char buffer[256];
   snprintf (buffer, 256, "<cups.Option %s=%s>",
 			  option->keyword, option->defchoice);
-    return PyUnicode_FromString (buffer);
+    return _pycups_PyUnicode_FromString (buffer);
 }
 
 ////////////
@@ -1177,13 +1177,13 @@ Option_getUI (Option *self, void *closure)
     Py_RETURN_NONE;
   }
 
-  return PyLong_FromLong (self->option->ui);
+  return _pycups_PyLong_FromLong (self->option->ui);
 }
 
 static PyObject *
 Option_getChoices (Option *self, void *closure)
 {
-  PyObject *choices = PyList_New (0);
+  PyObject *choices = _pycups_PyList_New (0);
   ppd_choice_t *choice;
   bool defchoice_seen = false;
   int i;
@@ -1194,22 +1194,22 @@ Option_getChoices (Option *self, void *closure)
   for (i = 0, choice = self->option->choices;
        i < self->option->num_choices;
        i++, choice++) {
-    PyObject *choice_dict = PyDict_New ();
+    PyObject *choice_dict = _pycups_PyDict_New ();
     PyObject *u;
 
     u = make_PyUnicode_from_ppd_string (self->ppd, choice->choice);
-    PyDict_SetItemString (choice_dict, "choice", u);
+    _pycups_PyDict_SetItemString (choice_dict, "choice", u);
     Py_DECREF (u);
 
     u = make_PyUnicode_from_ppd_string (self->ppd, choice->text);
-    PyDict_SetItemString (choice_dict, "text", u);
+    _pycups_PyDict_SetItemString (choice_dict, "text", u);
     Py_DECREF (u);
 
     u = PyBool_FromLong (choice->marked);
-    PyDict_SetItemString (choice_dict, "marked", u);
+    _pycups_PyDict_SetItemString (choice_dict, "marked", u);
     Py_DECREF (u);
 
-    PyList_Append (choices, choice_dict);
+    _pycups_PyList_Append (choices, choice_dict);
     if (!strcmp (choice->choice, self->option->defchoice))
       defchoice_seen = true;
   }
@@ -1218,18 +1218,18 @@ Option_getChoices (Option *self, void *closure)
     // This PPD option has a default choice that isn't one of the choices.
     // This really happens.
     const char *defchoice = self->option->defchoice;
-    PyObject *choice_dict = PyDict_New ();
+    PyObject *choice_dict = _pycups_PyDict_New ();
     PyObject *u;
 
     u = make_PyUnicode_from_ppd_string (self->ppd, defchoice);
-    PyDict_SetItemString (choice_dict, "choice", u);
+    _pycups_PyDict_SetItemString (choice_dict, "choice", u);
     Py_DECREF (u);
 
     u = make_PyUnicode_from_ppd_string (self->ppd, defchoice);
-    PyDict_SetItemString (choice_dict, "text", u);
+    _pycups_PyDict_SetItemString (choice_dict, "text", u);
     Py_DECREF (u);
 
-    PyList_Append (choices, choice_dict);
+    _pycups_PyList_Append (choices, choice_dict);
   }
 
   return choices;
@@ -1358,11 +1358,11 @@ Group_repr (Group *self)
 {
   ppd_group_t *group = self->group;
   if (!group)
-    return PyUnicode_FromString ("<cups.Group>");
+    return _pycups_PyUnicode_FromString ("<cups.Group>");
 
   char buffer[256];
   snprintf (buffer, 256, "<cups.Group %s>", group->name);
-    return PyUnicode_FromString (buffer);
+    return _pycups_PyUnicode_FromString (buffer);
 }
 
 ///////////
@@ -1392,7 +1392,7 @@ Group_getName (Group *self, void *closure)
 static PyObject *
 Group_getOptions (Group *self, void *closure)
 {
-  PyObject *options = PyList_New (0);
+  PyObject *options = _pycups_PyList_New (0);
   ppd_option_t *option;
   int i;
 
@@ -1404,14 +1404,14 @@ Group_getOptions (Group *self, void *closure)
        i++, option++) {
     PyObject *args = Py_BuildValue ("()");
     PyObject *kwlist = Py_BuildValue ("{}");
-    Option *opt = (Option *) PyType_GenericNew (&cups_OptionType,
+    Option *opt = (Option *) _pycups_PyType_GenericNew (&cups_OptionType,
 						args, kwlist);
     Py_DECREF (args);
     Py_DECREF (kwlist);
     opt->option = option;
     opt->ppd = self->ppd;
     Py_INCREF (self->ppd);
-    PyList_Append (options, (PyObject *) opt);
+    _pycups_PyList_Append (options, (PyObject *) opt);
   }
 
   return options;
@@ -1420,7 +1420,7 @@ Group_getOptions (Group *self, void *closure)
 static PyObject *
 Group_getSubgroups (Group *self, void *closure)
 {
-  PyObject *subgroups = PyList_New (0);
+  PyObject *subgroups = _pycups_PyList_New (0);
   ppd_group_t *subgroup;
   int i;
 
@@ -1432,14 +1432,14 @@ Group_getSubgroups (Group *self, void *closure)
        i++, subgroup++) {
     PyObject *args = Py_BuildValue ("()");
     PyObject *kwlist = Py_BuildValue ("{}");
-    Group *grp = (Group *) PyType_GenericNew (&cups_GroupType,
+    Group *grp = (Group *) _pycups_PyType_GenericNew (&cups_GroupType,
 					      args, kwlist);
     Py_DECREF (args);
     Py_DECREF (kwlist);
     grp->group = subgroup;
     grp->ppd = self->ppd;
     Py_INCREF (self->ppd);
-    PyList_Append (subgroups, (PyObject *) grp);
+    _pycups_PyList_Append (subgroups, (PyObject *) grp);
   }
 
   return subgroups;
@@ -1699,14 +1699,14 @@ Attribute_repr (Attribute *self)
 {
   ppd_attr_t *attribute = self->attribute;
   if (!attribute)
-    return PyUnicode_FromString ("<cups.Attribute>");
+    return _pycups_PyUnicode_FromString ("<cups.Attribute>");
 
   char buffer[256];
   snprintf (buffer, 256, "<cups.Attribute *%s%s%s>",
 			  attribute->name,
 			  attribute->spec[0] != '\0' ? " ": "",
 			  attribute->spec);
-    return PyUnicode_FromString (buffer);
+    return _pycups_PyUnicode_FromString (buffer);
 }
 
 ///////////////

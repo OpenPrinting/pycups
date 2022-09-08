@@ -53,17 +53,9 @@ destroy_TLS (void *value)
 {
   struct TLS *tls = (struct TLS *) value;
 
-  /* CPython API needs to be run only when our process holds
-   * Python global interpret lock */
-  PyGILState_STATE gilstate;
-  gilstate = PyGILState_Ensure();
+  _pycups_wrapper_void(tls->cups_password_callback, Py_XDECREF);
 
-  Py_XDECREF (tls->cups_password_callback);
-
-  Py_XDECREF (tls->cups_password_callback_context);
-
-  // release global interpret lock
-  PyGILState_Release(gilstate);
+  _pycups_wrapper_void(tls->cups_password_callback_context, Py_XDECREF);
 
   free (value);
 }
@@ -167,52 +159,52 @@ cups_modelSort (PyObject *self, PyObject *args)
   if (!PyArg_ParseTuple (args, "OO", &Oa, &Ob))
     return NULL;
 
-  a = PyUnicode_FromObject (Oa);
-  b = PyUnicode_FromObject (Ob);
-  if (a == NULL || b == NULL || !PyUnicode_Check (a) || !PyUnicode_Check (b)) {
+  a = _pycups_PyUnicode_FromObject (Oa);
+  b = _pycups_PyUnicode_FromObject (Ob);
+  if (a == NULL || b == NULL || !_pycups_PyUnicode_Check (a) || !_pycups_PyUnicode_Check (b)) {
     if (a) {
-      Py_DECREF (a);
+      _pycups_wrapper_void(a, Py_DECREF);
     }
     if (b) {
-      Py_DECREF (b);
+      _pycups_wrapper_void(b, Py_DECREF);
     }
 
-    PyErr_SetString (PyExc_TypeError, "Unable to convert to Unicode");
+    _pycups_PyErr_SetString (PyExc_TypeError, "Unable to convert to Unicode");
     return NULL;
   }
 
-  len_a = 1 + (long unsigned)PyUnicode_GetLength (a);
+  len_a = 1 + (long unsigned)_pycups_PyUnicode_GetLength (a);
   size_a = len_a * sizeof (wchar_t);
   if ((size_a / sizeof (wchar_t)) != len_a) {
-    Py_DECREF (a);
-    Py_DECREF (b);
-    PyErr_SetString (PyExc_RuntimeError, "String too long");
+    _pycups_wrapper_void(a, Py_DECREF);
+    _pycups_wrapper_void(b, Py_DECREF);
+    _pycups_PyErr_SetString (PyExc_RuntimeError, "String too long");
     return NULL;
   }
 
-  len_b = 1 + (long unsigned)PyUnicode_GetLength (b);
+  len_b = 1 + (long unsigned)_pycups_PyUnicode_GetLength (b);
   size_b = len_b * sizeof (wchar_t);
   if ((size_b / sizeof (wchar_t)) != len_b) {
-    Py_DECREF (a);
-    Py_DECREF (b);
-    PyErr_SetString (PyExc_RuntimeError, "String too long");
+    _pycups_wrapper_void(a, Py_DECREF);
+    _pycups_wrapper_void(b, Py_DECREF);
+    _pycups_PyErr_SetString (PyExc_RuntimeError, "String too long");
     return NULL;
   }
 
   wca = malloc (size_a);
   wcb = malloc (size_b);
   if (wca == NULL || wcb == NULL) {
-    Py_DECREF (a);
-    Py_DECREF (b);
+    _pycups_wrapper_void(a, Py_DECREF);
+    _pycups_wrapper_void(b, Py_DECREF);
     free (wca);
     free (wcb);
-    PyErr_SetString (PyExc_RuntimeError, "Insufficient memory");
+    _pycups_PyErr_SetString (PyExc_RuntimeError, "Insufficient memory");
     return NULL;
   }
-  PyUnicode_AsWideChar (a, wca, size_a);
-  PyUnicode_AsWideChar (b, wcb, size_b);
-  Py_DECREF (a);
-  Py_DECREF (b);
+  _pycups_PyUnicode_AsWideChar (a, wca, size_a);
+  _pycups_PyUnicode_AsWideChar (b, wcb, size_b);
+  _pycups_wrapper_void(a, Py_DECREF);
+  _pycups_wrapper_void(b, Py_DECREF);
   return Py_BuildValue ("i", do_model_compare (wca, wcb));
 }
 
@@ -276,13 +268,13 @@ cups_setEncryption (PyObject *self, PyObject *args)
 static PyObject *
 cups_getUser (PyObject *self)
 {
-  return PyUnicode_FromString (cupsUser ());
+  return _pycups_PyUnicode_FromString (cupsUser ());
 }
 
 static PyObject *
 cups_getServer (PyObject *self)
 {
-  return PyUnicode_FromString (cupsServer ());
+  return _pycups_PyUnicode_FromString (cupsServer ());
 }
 
 static PyObject *
@@ -306,17 +298,17 @@ cups_setPasswordCB (PyObject *self, PyObject *args)
   if (!PyArg_ParseTuple (args, "O:cups_setPasswordCB", &cb))
     return NULL;
 
-  if (!PyCallable_Check (cb)) {
-    PyErr_SetString (PyExc_TypeError, "Parameter must be callable");
+  if (!_pycups_PyCallable_Check (cb)) {
+    _pycups_PyErr_SetString (PyExc_TypeError, "Parameter must be callable");
     return NULL;
   }
 
   debugprintf ("-> cups_setPasswordCB\n");
-  Py_XDECREF (tls->cups_password_callback_context);
+  _pycups_wrapper_void(tls->cups_password_callback_context, Py_XDECREF);
   tls->cups_password_callback_context = NULL;
 
-  Py_XINCREF (cb);
-  Py_XDECREF (tls->cups_password_callback);
+  _pycups_wrapper_void(ob, Py_XINCREF);
+  _pycups_wrapper_void(tls->cups_password_callback, Py_XDECREF);
   tls->cups_password_callback = cb;
 
   cupsSetPasswordCB2 (password_callback_oldstyle, NULL);
@@ -336,30 +328,30 @@ cups_setPasswordCB2 (PyObject *self, PyObject *args)
     return NULL;
 
   if (cb == Py_None && cb_context != NULL) {
-    PyErr_SetString (PyExc_TypeError, "Default callback takes no context");
+    _pycups_PyErr_SetString (PyExc_TypeError, "Default callback takes no context");
     return NULL;
   }
-  else if (cb != Py_None && !PyCallable_Check (cb)) {
-    PyErr_SetString (PyExc_TypeError, "Parameter must be callable");
+  else if (cb != Py_None && !_pycups_PyCallable_Check (cb)) {
+    _pycups_PyErr_SetString (PyExc_TypeError, "Parameter must be callable");
     return NULL;
   }
 
   debugprintf ("-> cups_setPasswordCB2\n");
 
-  Py_XINCREF (cb_context);
-  Py_XDECREF (tls->cups_password_callback_context);
+  _pycups_wrapper_void(cb_context, Py_XINCREF);
+  _pycups_wrapper_void(tls->cups_password_callback_context, Py_XDECREF);
   tls->cups_password_callback_context = cb_context;
 
   if (cb == Py_None)
   {
-    Py_XDECREF (tls->cups_password_callback);
+    _pycups_wrapper_void(tls->cups_password_callback, Py_XDECREF);
     tls->cups_password_callback = NULL;
     cupsSetPasswordCB2 (NULL, NULL);
   }
   else
   {
-    Py_XINCREF (cb);
-    Py_XDECREF (tls->cups_password_callback);
+    _pycups_wrapper_void(cb, Py_XINCREF);
+    _pycups_wrapper_void(tls->cups_password_callback, Py_XDECREF);
     tls->cups_password_callback = cb;
     cupsSetPasswordCB2 (password_callback_newstyle, cb_context);
   }
@@ -407,16 +399,16 @@ cups_enumDests (PyObject *self, PyObject *args, PyObject *kwds)
 				    &user_data))
     return NULL;
 
-  if (!PyCallable_Check (cb)) {
-    PyErr_SetString (PyExc_TypeError, "cb must be callable");
+  if (!_pycups_PyCallable_Check (cb)) {
+    _pycups_PyErr_SetString (PyExc_TypeError, "cb must be callable");
     return NULL;
   }
 
   if (!user_data)
     user_data = Py_None;
 
-  Py_XINCREF (cb);
-  Py_XINCREF (user_data);
+  _pycups_wrapper_void(cb, Py_XINCREF);
+  _pycups_wrapper_void(user_data, Py_XINCREF);
   context.cb = cb;
   context.user_data = user_data;
   ret = cupsEnumDests (flags,
@@ -426,11 +418,11 @@ cups_enumDests (PyObject *self, PyObject *args, PyObject *kwds)
 		       mask,
 		       cups_dest_cb,
 		       &context);
-  Py_XDECREF (cb);
-  Py_XDECREF (user_data);
+  _pycups_wrapper_void(cb, Py_XDECREF);
+  _pycups_wrapper_void(user_data, Py_XDECREF);
 
   if (!ret) {
-    PyErr_SetString (PyExc_RuntimeError, "cupsEnumDests failed");
+    _pycups_PyErr_SetString (PyExc_RuntimeError, "cupsEnumDests failed");
     return NULL;
   }
 
@@ -467,21 +459,21 @@ cups_connectDest (PyObject *self, PyObject *args, PyObject *kwds)
 				    &user_data))
     return NULL;
 
-  if (Py_TYPE(destobj) != &cups_DestType) {
-    PyErr_SetString (PyExc_TypeError, "dest must be Dest object");
+  if (_pycups_Py_TYPE(destobj) != &cups_DestType) {
+    _pycups_PyErr_SetString (PyExc_TypeError, "dest must be Dest object");
     return NULL;
   }
 
-  if (!PyCallable_Check (cb)) {
-    PyErr_SetString (PyExc_TypeError, "cb must be callable");
+  if (!_pycups_PyCallable_Check (cb)) {
+    _pycups_PyErr_SetString (PyExc_TypeError, "cb must be callable");
     return NULL;
   }
 
   if (!user_data)
     user_data = Py_None;
 
-  Py_XINCREF (cb);
-  Py_XINCREF (user_data);
+  _pycups_wrapper_void(cb, Py_XINCREF);
+  _pycups_wrapper_void(user_data, Py_XINCREF);
   context.cb = cb;
   context.user_data = user_data;
   resource[0] = '\0';
@@ -506,8 +498,8 @@ cups_connectDest (PyObject *self, PyObject *args, PyObject *kwds)
 			  sizeof (resource),
 			  cups_dest_cb,
 			  &context);
-  Py_XDECREF (cb);
-  Py_XDECREF (user_data);
+  _pycups_wrapper_void(cb, Py_XDECREF);
+  _pycups_wrapper_void(user_data, Py_XDECREF);
   free (dest.options);
 
   if (!conn) {
@@ -517,10 +509,10 @@ cups_connectDest (PyObject *self, PyObject *args, PyObject *kwds)
 
   PyObject *largs = Py_BuildValue ("()");
   PyObject *lkwlist = Py_BuildValue ("{}");
-  connobj = (Connection *) PyType_GenericNew (&cups_ConnectionType,
+  connobj = (Connection *) _pycups_PyType_GenericNew (&cups_ConnectionType,
 					      largs, lkwlist);
-  Py_DECREF (largs);
-  Py_DECREF (lkwlist);
+  _pycups_wrapper_void(largs, Py_DECREF);
+  _pycups_wrapper_void(lkwlist, Py_DECREF);
   connobj->host = strdup ("");
   connobj->http = conn;
 
@@ -536,7 +528,7 @@ cups_ippErrorString (PyObject *self, PyObject *args)
   if (!PyArg_ParseTuple (args, "i", &op))
     return NULL;
 
-  return PyUnicode_FromString (ippErrorString (op));
+  return _pycups_PyUnicode_FromString (ippErrorString (op));
 }
 
 static PyObject *
@@ -547,7 +539,7 @@ cups_ippOpString (PyObject *self, PyObject *args)
   if (!PyArg_ParseTuple (args, "i", &op))
     return NULL;
 
-  return PyUnicode_FromString (ippOpString (op));
+  return _pycups_PyUnicode_FromString (ippOpString (op));
 }
 
 static PyObject *
@@ -591,7 +583,7 @@ cups_require (PyObject *self, PyObject *args)
 good:
   Py_RETURN_NONE;
 fail:
-  PyErr_SetString (PyExc_RuntimeError, "I am version " VERSION);
+  _pycups_PyErr_SetString (PyExc_RuntimeError, "I am version " VERSION);
   return NULL;
 }
 
@@ -599,7 +591,7 @@ struct module_state {
     PyObject *error;
 };
 
-#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+#define GETSTATE(m) ((struct module_state*)_pycups_PyModule_GetState(m))
 
 
 static PyMethodDef cups_methods[] = {
@@ -738,12 +730,12 @@ static PyMethodDef cups_methods[] = {
 };
 
 static int cups_traverse(PyObject *m, visitproc visit, void *arg) {
-    Py_VISIT(GETSTATE(m)->error);
+    _pycups_wrapper_void(GETSTATE(m)->error, Py_VISIT);
     return 0;
 }
 
 static int cups_clear(PyObject *m) {
-    Py_CLEAR(GETSTATE(m)->error);
+    _pycups_wrapper_void(GETSTATE(m)->error, Py_CLEAR);
     return 0;
 }
 
@@ -765,7 +757,7 @@ static struct PyModuleDef moduledef = {
 PyObject *
 PyInit_cups(void)
 {
-    PyObject *m = PyModule_Create(&moduledef);
+    PyObject *m = _pycups_PyModule_Create(&moduledef);
 
   if (m == NULL)
     INITERROR;
@@ -777,11 +769,11 @@ PyInit_cups(void)
     INITERROR;
   }
 
-  PyObject *d = PyModule_GetDict (m);
+  PyObject *d = _pycups_PyModule_GetDict (m);
   PyObject *obj;
 
   // Connection type
-  cups_ConnectionType.tp_new = PyType_GenericNew;
+  cups_ConnectionType.tp_new = _pycups_PyType_GenericNew;
   if (PyType_Ready (&cups_ConnectionType) < 0)
     INITERROR;
 
@@ -789,7 +781,7 @@ PyInit_cups(void)
 		      (PyObject *)&cups_ConnectionType);
 
   // PPD type
-  cups_PPDType.tp_new = PyType_GenericNew;
+  cups_PPDType.tp_new = _pycups_PyType_GenericNew;
   if (PyType_Ready (&cups_PPDType) < 0)
     INITERROR;
 
@@ -797,7 +789,7 @@ PyInit_cups(void)
 		      (PyObject *)&cups_PPDType);
 
   // Option type
-  cups_OptionType.tp_new = PyType_GenericNew;
+  cups_OptionType.tp_new = _pycups_PyType_GenericNew;
   if (PyType_Ready (&cups_OptionType) < 0)
     INITERROR;
 
@@ -805,7 +797,7 @@ PyInit_cups(void)
 		      (PyObject *)&cups_OptionType);
 
   // Group type
-  cups_GroupType.tp_new = PyType_GenericNew;
+  cups_GroupType.tp_new = _pycups_PyType_GenericNew;
   if (PyType_Ready (&cups_GroupType) < 0)
     INITERROR;
 
@@ -813,7 +805,7 @@ PyInit_cups(void)
 		      (PyObject *)&cups_GroupType);
 
   // Constraint type
-  cups_ConstraintType.tp_new = PyType_GenericNew;
+  cups_ConstraintType.tp_new = _pycups_PyType_GenericNew;
   if (PyType_Ready (&cups_ConstraintType) < 0)
     INITERROR;
 
@@ -821,7 +813,7 @@ PyInit_cups(void)
 		      (PyObject *)&cups_ConstraintType);
 
   // Attribute type
-  cups_AttributeType.tp_new = PyType_GenericNew;
+  cups_AttributeType.tp_new = _pycups_PyType_GenericNew;
   if (PyType_Ready (&cups_AttributeType) < 0)
     INITERROR;
 
@@ -829,7 +821,7 @@ PyInit_cups(void)
 		      (PyObject *)&cups_AttributeType);
 
   // Dest type
-  cups_DestType.tp_new = PyType_GenericNew;
+  cups_DestType.tp_new = _pycups_PyType_GenericNew;
   if (PyType_Ready (&cups_DestType) < 0)
     INITERROR;
 
@@ -837,7 +829,7 @@ PyInit_cups(void)
 		      (PyObject *)&cups_DestType);
 
   // IPPRequest type
-  cups_IPPRequestType.tp_new = PyType_GenericNew;
+  cups_IPPRequestType.tp_new = _pycups_PyType_GenericNew;
   if (PyType_Ready (&cups_IPPRequestType) < 0)
       INITERROR;
 
@@ -845,7 +837,7 @@ PyInit_cups(void)
 		      (PyObject *)&cups_IPPRequestType);
 
   // IPPAttribute type
-  cups_IPPAttributeType.tp_new = PyType_GenericNew;
+  cups_IPPAttributeType.tp_new = _pycups_PyType_GenericNew;
   if (PyType_Ready (&cups_IPPAttributeType) < 0)
       INITERROR;
 
@@ -854,14 +846,14 @@ PyInit_cups(void)
 
   // Constants
 #  define INT_CONSTANT(name)					\
-    PyDict_SetItemString (d, #name, PyLong_FromLong (name))
+    _pycups_PyDict_SetItemString (d, #name, _pycups_PyLong_FromLong (name))
 #  define INT_CONSTANT_AS(name,alias)				\
-    PyDict_SetItemString (d, alias, PyLong_FromLong (name))
+    _pycups_PyDict_SetItemString (d, alias, _pycups_PyLong_FromLong (name))
 #  define INT_CONSTANT_ALIAS(name,alias)			\
-    PyDict_SetItemString (d, #name, PyLong_FromLong (name));	\
-    PyDict_SetItemString (d, alias, PyLong_FromLong (name))
+    _pycups_PyDict_SetItemString (d, #name, _pycups_PyLong_FromLong (name));	\
+    _pycups_PyDict_SetItemString (d, alias, _pycups_PyLong_FromLong (name))
 #define STR_CONSTANT(name)					\
-  PyDict_SetItemString (d, #name, PyUnicode_FromString (name))
+  _pycups_PyDict_SetItemString (d, #name, _pycups_PyUnicode_FromString (name))
 
 #  define INT_17_CONSTANT(newname,oldname)	\
   INT_CONSTANT_ALIAS(newname,#oldname)
@@ -1201,8 +1193,8 @@ PyInit_cups(void)
   INT_CONSTANT (CUPS_DEST_FLAGS_CANCELED);
 
   // Exceptions
-  obj = PyDict_New ();
-  PyDict_SetItemString (obj, "__doc__", PyUnicode_FromString(
+  obj = _pycups_PyDict_New ();
+  _pycups_PyDict_SetItemString (obj, "__doc__", _pycups_PyUnicode_FromString(
     "This exception is raised when an HTTP problem has occurred.  It \n"
     "provides an integer HTTP status code.\n\n"
     "Use it like this::\n"
@@ -1217,8 +1209,8 @@ PyInit_cups(void)
   Py_INCREF (HTTPError);
   PyModule_AddObject (m, "HTTPError", HTTPError);
 
-  obj = PyDict_New ();
-  PyDict_SetItemString (obj, "__doc__", PyUnicode_FromString(
+  obj = _pycups_PyDict_New ();
+  _pycups_PyDict_SetItemString (obj, "__doc__", _pycups_PyUnicode_FromString(
     "This exception is raised when an IPP error has occurred.  It \n"
     "provides an integer IPP status code, and a human-readable string \n"
     "describing the error.\n\n"

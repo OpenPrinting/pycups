@@ -66,38 +66,38 @@ IPPAttribute_init (IPPAttribute *self, PyObject *args, PyObject *kwds)
       break;
 
     default:
-      PyErr_SetString (PyExc_RuntimeError, "missing value list");
+      _pycups_PyErr_SetString (PyExc_RuntimeError, "missing value list");
       return -1;
     }
   } else {
     size_t i, n;
     int valid = 1;
 
-    if (PyList_Check (value)) {
+    if (_pycups_PyList_Check (value)) {
       list = value;
-      Py_INCREF (value);
-      n = PyList_Size (value);
+      _pycups_wrapper_void(value, Py_INCREF);
+      n = _pycups_PyList_Size (value);
     } else {
-      list = PyList_New (0);
-      PyList_Append (list, value);
+      list = _pycups_PyList_New (0);
+      _pycups_PyList_Append (list, value);
       n = 1;
     }
 
     for (i = 0; valid && i < n; i++) {
-      PyObject *v = PyList_GetItem (list, i); // borrowed
+      PyObject *v = _pycups_PyList_GetItem (list, i); // borrowed
       switch (value_tag) {
       case IPP_TAG_INTEGER:
       case IPP_TAG_ENUM:
       case IPP_TAG_RANGE:
-	valid = PyLong_Check (v);
+	valid = _pycups_PyLong_Check (v);
 	break;
 
       case IPP_TAG_BOOLEAN:
-	valid = PyBool_Check (v);
+	valid = _pycups_PyBool_Check (v);
 	break;
 
       case IPP_TAG_TEXT:
-	valid = PyUnicode_Check (v);
+	valid = _pycups_PyUnicode_Check (v);
 	break;
 
       case IPP_TAG_NAME:
@@ -106,7 +106,7 @@ IPPAttribute_init (IPPAttribute *self, PyObject *args, PyObject *kwds)
       case IPP_TAG_MIMETYPE:
       case IPP_TAG_CHARSET:
       case IPP_TAG_LANGUAGE:
-	valid = (PyUnicode_Check (v) || PyBytes_Check (v));
+	valid = (_pycups_PyUnicode_Check (v) || _pycups_PyBytes_Check (v));
 	break;
 
       default:
@@ -115,8 +115,8 @@ IPPAttribute_init (IPPAttribute *self, PyObject *args, PyObject *kwds)
     }
 
     if (!valid) {
-      PyErr_SetString (PyExc_RuntimeError, "invalid value");
-      Py_DECREF (list);
+      _pycups_PyErr_SetString (PyExc_RuntimeError, "invalid value");
+      _pycups_wrapper_void(list, Py_DECREF);
       return -1;
     }
   }
@@ -131,7 +131,7 @@ IPPAttribute_init (IPPAttribute *self, PyObject *args, PyObject *kwds)
 static void
 IPPAttribute_dealloc (IPPAttribute *self)
 {
-  Py_XDECREF (self->values);
+  _pycups_wrapper_void(self->values, Py_XDECREF);
   if (self->name)
     free (self->name);
 
@@ -154,10 +154,10 @@ IPPAttribute_repr (IPPAttribute *self)
 	    self->name, self->group_tag, self->value_tag,
 	    values ? ": " : "",
 	    values ? values : "");
-  ret = PyUnicode_FromString (buffer);
+  ret = _pycups_PyUnicode_FromString (buffer);
 
   free (values);
-  Py_XDECREF (values_repr);
+  _pycups_wrapper_void(values_repr, Py_XDECREF);
   return ret;
 }
 
@@ -168,25 +168,25 @@ IPPAttribute_repr (IPPAttribute *self)
 static PyObject *
 IPPAttribute_getGroupTag (IPPAttribute *self, void *closure)
 {
-  return PyLong_FromLong (self->group_tag);
+  return _pycups_PyLong_FromLong (self->group_tag);
 }
 
 static PyObject *
 IPPAttribute_getValueTag (IPPAttribute *self, void *closure)
 {
-  return PyLong_FromLong (self->value_tag);
+  return _pycups_PyLong_FromLong (self->value_tag);
 }
 
 static PyObject *
 IPPAttribute_getName (IPPAttribute *self, void *closure)
 {
-  return PyUnicode_FromString (self->name);
+  return _pycups_PyUnicode_FromString (self->name);
 }
 
 static PyObject *
 IPPAttribute_getValues (IPPAttribute *self, void *closure)
 {
-  Py_INCREF (self->values);
+  _pycups_wrapper_void(self->values, Py_INCREF);
   return self->values;
 }
 
@@ -323,7 +323,7 @@ build_IPPAttribute (ipp_attribute_t *attr)
     int i;
     int unknown_value_tag = 0;
 
-    values = PyList_New (0);
+    values = _pycups_PyList_New (0);
     if (!values)
       goto out;
 
@@ -332,17 +332,17 @@ build_IPPAttribute (ipp_attribute_t *attr)
       case IPP_TAG_INTEGER:
       case IPP_TAG_ENUM:
       case IPP_TAG_RANGE:
-	value = PyLong_FromLong (ippGetInteger (attr, i));
+	value = _pycups_PyLong_FromLong (ippGetInteger (attr, i));
 	debugprintf ("i%d", ippGetInteger (attr, i));
 	break;
 
       case IPP_TAG_BOOLEAN:
-	value = PyBool_FromLong (ippGetBoolean (attr, i));
+	value = _pycups_PyBool_FromLong (ippGetBoolean (attr, i));
 	debugprintf ("b%d", ippGetInteger (attr, i));
 	break;
 
       case IPP_TAG_TEXT:
-	value = PyUnicode_Decode (ippGetString (attr, i, NULL),
+	value = _pycups_PyUnicode_Decode (ippGetString (attr, i, NULL),
 				  strlen (ippGetString (attr, i, NULL)),
 				  "utf-8", NULL);
 	debugprintf ("u%s", ippGetString (attr, i, NULL));
@@ -354,7 +354,7 @@ build_IPPAttribute (ipp_attribute_t *attr)
       case IPP_TAG_MIMETYPE:
       case IPP_TAG_CHARSET:
       case IPP_TAG_LANGUAGE:
-	value = PyUnicode_FromString (ippGetString (attr, i, NULL));
+	value = _pycups_PyUnicode_FromString (ippGetString (attr, i, NULL));
 	debugprintf ("s%s", ippGetString (attr, i, NULL));
 	break;
 
@@ -368,17 +368,17 @@ build_IPPAttribute (ipp_attribute_t *attr)
 	break; /* out of values loop */
 
       debugprintf ("(%p), ", value);
-      if (PyList_Append (values, value) != 0) {
-	Py_DECREF (values);
-	Py_DECREF (value);
+      if (_pycups_PyList_Append (values, value) != 0) {
+	_pycups_wrapper_void(values, Py_DECREF);
+	_pycups_wrapper_void(value, Py_DECREF);
 	goto out;
       }
 
-      Py_DECREF (value);
+      _pycups_wrapper_void(value, Py_DECREF);
     }
 
     if (unknown_value_tag) {
-      Py_DECREF (values);
+      _pycups_wrapper_void(values, Py_DECREF);
       goto out;
     }
 
@@ -391,7 +391,7 @@ build_IPPAttribute (ipp_attribute_t *attr)
 			   ippGetValueTag (attr),
 			   ippGetName (attr),
 			   values);
-    Py_DECREF (values);
+    _pycups_wrapper_void(values, Py_DECREF);
     values = NULL;
   } else
     largs = Py_BuildValue ("(iis)", ippGetGroupTag (attr), ippGetValueTag (attr),
@@ -404,25 +404,25 @@ build_IPPAttribute (ipp_attribute_t *attr)
   if (!lkwlist)
     goto out;
 
-  attribute = (IPPAttribute *) PyType_GenericNew (&cups_IPPAttributeType,
+  attribute = (IPPAttribute *) _pycups_PyType_GenericNew (&cups_IPPAttributeType,
 						  largs, lkwlist);
   if (!attribute)
     goto out;
 
   if (IPPAttribute_init (attribute, largs, lkwlist) != 0) {
-    Py_DECREF (attribute);
+    _pycups_wrapper_void(attribute, Py_DECREF);
     attribute = NULL;
   }
 
 out:
   if (values)
-    Py_DECREF (values);
+    _pycups_wrapper_void(values, Py_DECREF);
 
   if (largs)
-    Py_DECREF (largs);
+    _pycups_wrapper_void(largs, Py_DECREF);
 
   if (lkwlist)
-    Py_DECREF (lkwlist);
+    _pycups_wrapper_void(lkwlist, Py_DECREF);
 
   return attribute;
 }
@@ -447,13 +447,13 @@ IPPRequest_add (IPPRequest *self, PyObject *args)
   if (!PyArg_ParseTuple (args, "O", &obj))
     return NULL;
 
-  if (Py_TYPE(obj) != &cups_IPPAttributeType) {
-    PyErr_SetString (PyExc_TypeError, "Parameter must be IPPAttribute");
+  if (_pycups_Py_TYPE(obj) != &cups_IPPAttributeType) {
+    _pycups_PyErr_SetString (PyExc_TypeError, "Parameter must be IPPAttribute");
     return NULL;
   }
 
   attribute = (IPPAttribute *) obj;
-  num_values = PyList_Size (attribute->values);
+  num_values = _pycups_PyList_Size (attribute->values);
   switch (attribute->value_tag) {
   case IPP_TAG_INTEGER:
   case IPP_TAG_ENUM:
@@ -480,7 +480,7 @@ IPPRequest_add (IPPRequest *self, PyObject *args)
 
   values = calloc (num_values, value_size);
   if (!values) {
-    PyErr_SetString (PyExc_MemoryError, "Unable to allocate memory");
+    _pycups_PyErr_SetString (PyExc_MemoryError, "Unable to allocate memory");
     return NULL;
   }
 
@@ -489,9 +489,9 @@ IPPRequest_add (IPPRequest *self, PyObject *args)
   case IPP_TAG_ENUM:
   case IPP_TAG_RANGE:
     for (i = 0; i < num_values; i++) {
-      PyObject *item = PyList_GetItem (attribute->values, i);
-      if (PyLong_Check (item))
-	((int *)values)[i] = PyLong_AsLong (item);
+      PyObject *item = _pycups_PyList_GetItem (attribute->values, i);
+      if (_pycups_PyLong_Check (item))
+	((int *)values)[i] = _pycups_PyLong_AsLong (item);
     }
     ippAddIntegers (self->ipp,
 		    attribute->group_tag,
@@ -503,7 +503,7 @@ IPPRequest_add (IPPRequest *self, PyObject *args)
 
   case IPP_TAG_BOOLEAN:
     for (i = 0; i < num_values; i++) {
-      PyObject *item = PyList_GetItem (attribute->values, i);
+      PyObject *item = _pycups_PyList_GetItem (attribute->values, i);
       ((char *)values)[i] = (item == Py_True ? 1 : 0);
     }
     ippAddBooleans (self->ipp,
@@ -520,9 +520,9 @@ IPPRequest_add (IPPRequest *self, PyObject *args)
   case IPP_TAG_CHARSET:
   case IPP_TAG_LANGUAGE:
     for (i = 0; i < num_values; i++) {
-      PyObject *item = PyList_GetItem (attribute->values, i);
+      PyObject *item = _pycups_PyList_GetItem (attribute->values, i);
       char *str;
-      str = strdup (PyUnicode_AsUTF8 (item));
+      str = strdup (_pycups_PyUnicode_AsUTF8 (item));
       ((char **)values)[i] = str;
       if (!str)
 	break;
@@ -531,7 +531,7 @@ IPPRequest_add (IPPRequest *self, PyObject *args)
       int j;
       for (j = 0; j < i; j++)
 	free (((char **)values)[j]);
-      PyErr_SetString (PyExc_MemoryError, "Unable to allocate memory");
+      _pycups_PyErr_SetString (PyExc_MemoryError, "Unable to allocate memory");
       free (values);
       return NULL;
     }
@@ -571,20 +571,20 @@ cupsipp_iocb_read (PyObject *callable, ipp_uchar_t *buffer, size_t len)
     goto out;
   }
 
-  result = PyEval_CallObject (callable, args);
-  Py_DECREF (args);
+  result = _pycups_PyEval_CallObject (callable, args);
+  _pycups_wrapper_void(args, Py_DECREF);
 
   if (result == NULL) {
     debugprintf ("Exception in read callback\n");
     goto out;
   }
 
-  if (PyUnicode_Check (result) || PyBytes_Check (result)) {
-    if (PyUnicode_Check (result)) {
-      PyObject *stringobj = PyUnicode_AsUTF8String (result);
-      PyBytes_AsStringAndSize (stringobj, &gotbuffer, &got);
+  if (_pycups_PyUnicode_Check (result) || _pycups_PyBytes_Check (result)) {
+    if (_pycups_PyUnicode_Check (result)) {
+      PyObject *stringobj = _pycups_PyUnicode_AsUTF8String (result);
+      _pycups_PyBytes_AsStringAndSize (stringobj, &gotbuffer, &got);
     } else {
-      PyBytes_AsStringAndSize (result, &gotbuffer, &got);
+      _pycups_PyBytes_AsStringAndSize (result, &gotbuffer, &got);
     }
 
     if (got < 0)
@@ -602,7 +602,7 @@ cupsipp_iocb_read (PyObject *callable, ipp_uchar_t *buffer, size_t len)
     debugprintf ("Unknown result object type!\n");
   }
 
-  Py_DECREF (result);
+  _pycups_wrapper_void(result, Py_DECREF);
 
  out:
   debugprintf ("<- cupsipp_iocb_read() == %zd\n", got);
@@ -623,16 +623,16 @@ cupsipp_iocb_write (PyObject *callable, ipp_uchar_t *buffer, size_t len)
     goto out;
   }
 
-  result = PyEval_CallObject (callable, args);
-  Py_DECREF (args);
+  result = _pycups_PyEval_CallObject (callable, args);
+  _pycups_wrapper_void(args, Py_DECREF);
 
   if (result == NULL) {
     debugprintf ("Exception in write callback\n");
     goto out;
   }
 
-  if (PyLong_Check (result))
-    wrote = PyLong_AsLong (result);
+  if (_pycups_PyLong_Check (result))
+    wrote = _pycups_PyLong_AsLong (result);
   else {
     debugprintf ("Bad return value\n");
     goto out;
@@ -640,7 +640,7 @@ cupsipp_iocb_write (PyObject *callable, ipp_uchar_t *buffer, size_t len)
 
 out:
   if (result)
-    Py_DECREF (result);
+    _pycups_wrapper_void(result, Py_DECREF);
 
   debugprintf ("<- cupsipp_iocb_write()\n");
   return wrote;
@@ -658,14 +658,14 @@ IPPRequest_readIO (IPPRequest *self, PyObject *args, PyObject *kwds)
 				    &cb, &blocking))
     return NULL;
 
-  if (!PyCallable_Check (cb)) {
-    PyErr_SetString (PyExc_TypeError, "Parameter must be callable");
+  if (!_pycups_PyCallable_Check (cb)) {
+    _pycups_PyErr_SetString (PyExc_TypeError, "Parameter must be callable");
     return NULL;
   }
 
   state = ippReadIO (cb, (ipp_iocb_t) cupsipp_iocb_read,
 		     blocking, NULL, self->ipp);
-  return PyLong_FromLong (state);
+  return _pycups_PyLong_FromLong (state);
 }
 
 static PyObject *
@@ -680,14 +680,14 @@ IPPRequest_writeIO (IPPRequest *self, PyObject *args, PyObject *kwds)
 				    &cb, &blocking))
     return NULL;
 
-  if (!PyCallable_Check (cb)) {
-    PyErr_SetString (PyExc_TypeError, "Parameter must be callable");
+  if (!_pycups_PyCallable_Check (cb)) {
+    _pycups_PyErr_SetString (PyExc_TypeError, "Parameter must be callable");
     return NULL;
   }
 
   state = ippWriteIO (cb, (ipp_iocb_t) cupsipp_iocb_write,
 		     blocking, NULL, self->ipp);
-  return PyLong_FromLong (state);
+  return _pycups_PyLong_FromLong (state);
 }
 
 /* Request properties */
@@ -695,7 +695,7 @@ IPPRequest_writeIO (IPPRequest *self, PyObject *args, PyObject *kwds)
 static PyObject *
 IPPRequest_getAttributes (IPPRequest *self, void *closure)
 {
-  PyObject *attrs = PyList_New (0);
+  PyObject *attrs = _pycups_PyList_New (0);
   ipp_attribute_t *attr;
   for (attr = ippFirstAttribute (self->ipp); attr; attr = ippNextAttribute(self->ipp))
     {
@@ -703,27 +703,27 @@ IPPRequest_getAttributes (IPPRequest *self, void *closure)
       if (!attribute)
 	goto fail;
 
-      if (PyList_Append (attrs, (PyObject *) attribute) != 0)
+      if (_pycups_PyList_Append (attrs, (PyObject *) attribute) != 0)
 	goto fail;
     }
 
   return attrs;
 
  fail:
-  Py_DECREF (attrs);
+  _pycups_wrapper_void(attrs, Py_DECREF);
   return NULL;
 }
 
 static PyObject *
 IPPRequest_getOperation (IPPRequest *self, void *closure)
 {
-  return PyLong_FromLong (ippGetOperation (self->ipp));
+  return _pycups_PyLong_FromLong (ippGetOperation (self->ipp));
 }
 
 static PyObject *
 IPPRequest_getStatuscode (IPPRequest *self, void *closure)
 {
-  return PyLong_FromLong (ippGetStatusCode (self->ipp));
+  return _pycups_PyLong_FromLong (ippGetStatusCode (self->ipp));
 }
 
 static int
@@ -733,15 +733,15 @@ IPPRequest_setState (IPPRequest *self, PyObject *value, void *closure)
 
   if (value == NULL)
   {
-    PyErr_SetString(PyExc_TypeError, "Cannot delete state");
+    _pycups_PyErr_SetString(PyExc_TypeError, "Cannot delete state");
     return -1;
   }
 
-  if (PyLong_Check(value))
-    state = PyLong_AsLong (value);
+  if (_pycups_PyLong_Check(value))
+    state = _pycups_PyLong_AsLong (value);
   else
   {
-    PyErr_SetString(PyExc_TypeError, "state must be an integer");
+    _pycups_PyErr_SetString(PyExc_TypeError, "state must be an integer");
     return -1;
   }
 
@@ -752,7 +752,7 @@ IPPRequest_setState (IPPRequest *self, PyObject *value, void *closure)
 static PyObject *
 IPPRequest_getState (IPPRequest *self, void *closure)
 {
-  return PyLong_FromLong (ippGetState (self->ipp));
+  return _pycups_PyLong_FromLong (ippGetState (self->ipp));
 }
 
 static int
@@ -762,15 +762,15 @@ IPPRequest_setStatuscode (IPPRequest *self, PyObject *value, void *closure)
 
   if (value == NULL)
   {
-    PyErr_SetString(PyExc_TypeError, "Cannot delete statuscode");
+    _pycups_PyErr_SetString(PyExc_TypeError, "Cannot delete statuscode");
     return -1;
   }
 
-  if (PyLong_Check(value))
-    statuscode = PyLong_AsLong (value);
+  if (_pycups_PyLong_Check(value))
+    statuscode = _pycups_PyLong_AsLong (value);
   else
   {
-    PyErr_SetString(PyExc_TypeError, "statuscode must be an integer");
+    _pycups_PyErr_SetString(PyExc_TypeError, "statuscode must be an integer");
     return -1;
   }
 

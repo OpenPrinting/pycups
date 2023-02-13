@@ -1512,6 +1512,10 @@ Connection_getJobs (Connection *self, PyObject *args, PyObject *kwds)
   PyObject *result;
   ipp_t *request, *answer;
   ipp_attribute_t *attr;
+  char uri[HTTP_MAX_URI] = "ipp://localhost/printers/";
+  int len_uri = strlen(uri);
+  int len_queue = 0;
+  char *queue = NULL;
   char *which = NULL;
   int my_jobs = 0;
   int limit = -1;
@@ -1519,18 +1523,38 @@ Connection_getJobs (Connection *self, PyObject *args, PyObject *kwds)
   PyObject *requested_attrs = NULL;
   char **attrs = NULL; /* initialised to calm compiler */
   size_t n_attrs = 0; /* initialised to calm compiler */
-  static char *kwlist[] = { "which_jobs", "my_jobs", "limit", "first_job_id", 
-			    "requested_attributes", NULL };
-  if (!PyArg_ParseTupleAndKeywords (args, kwds, "|siiiO", kwlist,
-				    &which, &my_jobs, &limit, &first_job_id,
-				    &requested_attrs))
+  static char *kwlist[] = { "queue", "which_jobs", "my_jobs", "limit",
+			    "first_job_id", "requested_attributes", NULL };
+  if (!PyArg_ParseTupleAndKeywords (args, kwds, "|ssiiiO", kwlist,
+				    &queue, &which, &my_jobs, &limit,
+				    &first_job_id, &requested_attrs))
     return NULL;
 
-  debugprintf ("-> Connection_getJobs(%s,%d)\n",
-	       which ? which : "(null)", my_jobs);
+  debugprintf ("-> Connection_getJobs(%.1023s,%s,%d)\n",
+	       queue ? queue : "(null)", which ? which : "(null)", my_jobs);
+
+  if (queue) {
+    len_queue = strspn (queue, "!$&'()*+,-.:;=@_~0123456789"
+                        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                        "abcdefghijklmnopqrstuvwxyz");
+
+    if (queue[len_queue] != '\0') {
+      PyErr_SetString (PyExc_RuntimeError, "invalid queue specified");
+      return NULL;
+    }
+
+    if (len_uri + len_queue > HTTP_MAX_URI - 1) {
+      debugprintf ("queue name is too long, trimming it");
+      len_queue = HTTP_MAX_URI - 1 - len_uri;
+    }
+
+    memmove (uri + len_uri, queue, len_queue);
+    uri[len_uri + len_queue] = '\0';
+  }
+
   request = ippNewRequest(IPP_GET_JOBS);
   ippAddString (request, IPP_TAG_OPERATION, IPP_TAG_URI, "printer-uri",
-		NULL, "ipp://localhost/printers/");
+		NULL, uri);
 
   ippAddString (request, IPP_TAG_OPERATION, IPP_TAG_KEYWORD, "which-jobs",
 		NULL, which ? which : "not-completed");

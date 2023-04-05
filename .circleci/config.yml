@@ -1,0 +1,21 @@
+---
+version: 2.1
+jobs:
+  cheese-shop:
+    machine:
+      image: ubuntu-2204:2023.02.1
+    steps:
+      - run: "pip install pycups"
+  run-tests:
+    machine:
+      image: ubuntu-2204:2023.02.1
+    steps:
+      - checkout
+      - run: "make"
+      - run: "sudo make install"
+      - run: "python3 test.py"
+workflows:
+  main-workflow:
+    jobs:
+      - run-tests
+      - cheese-shop

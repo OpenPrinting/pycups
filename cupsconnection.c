@@ -3393,13 +3393,14 @@ Connection_getPrinterAttributes (Connection *self, PyObject *args,
       } else {
 	PyObject *val = PyObject_from_attr_value (attr, i);
 	PyDict_SetItemString (ret, ippGetName (attr), val);
+	Py_XDECREF (val);
       }
     }
 
     if (!attr)
       break;
   }
-
+  ippDelete (answer);
   debugprintf ("<- Connection_getPrinterAttributes() = dict\n");
   return ret;
 }

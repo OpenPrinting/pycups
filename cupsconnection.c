@@ -1990,6 +1990,7 @@ Connection_writeRequestData (Connection *self, PyObject *args, PyObject *kwds)
   static char *kwlist[] = { "buffer", "length", NULL };
   PyObject *buffer_obj;
   char *buffer;
+  Py_ssize_t buffer_length;
   int length;
   http_status_t	status;		/* Write status */
 
@@ -1997,8 +1998,15 @@ Connection_writeRequestData (Connection *self, PyObject *args, PyObject *kwds)
 				    &buffer_obj, &length))
     return NULL;
 
-  buffer = (char *) malloc((size_t) length);
-  memcpy(buffer, PyBytes_AsString(buffer_obj), length);
+  if (PyBytes_AsStringAndSize (buffer_obj, &buffer, &buffer_length) < 0)
+    return NULL;
+
+  if (length < 0 || length > buffer_length) {
+    PyErr_SetString (PyExc_ValueError,
+                     "length must be between 0 and the buffer size");
+    return NULL;
+  }
+
   debugprintf ("-> Connection_writeRequestData(length=%d)\n", length);
 
   Connection_begin_allow_threads (self);
@@ -2007,13 +2015,11 @@ Connection_writeRequestData (Connection *self, PyObject *args, PyObject *kwds)
 
   if (status != HTTP_CONTINUE)
   {
-    free (buffer);
     set_ipp_error (cupsLastError (), cupsLastErrorString ());
     debugprintf ("<- Connection_writeRequestData() = NULL\n");
     return NULL;
   }
 
-  free (buffer);
   debugprintf ("<- Connection_writeRequestData() = %d\n", status);
   return PyLong_FromLong (status);
 }
@@ -5461,7 +5467,7 @@ PyMethodDef Connection_methods[] =
       (PyCFunction) Connection_writeRequestData, METH_VARARGS | METH_KEYWORDS,
       "writeRequestData(buffer, length) -> integer\n\n"
       "Write data after an IPP request.\n\n"
-      "@type buffer: string\n"
+      "@type buffer: bytes\n"
       "@param buffer: bytes to write\n"
       "@type length: integer\n"
       "@param length: number of bytes to write\n"

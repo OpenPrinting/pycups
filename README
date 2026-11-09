@@ -20,7 +20,9 @@ if they differ from Fedora):
 - gcc
 - cups-devel (libcups2-dev)
 - python3-devel (python3-dev)
-- (since Python 3.12) python3-setuptools
+- meson
+- python3-build (python3-build)
+- python3-meson-python (python3-mesonpy)
 
 Please install them before compiling PyCUPS.
 

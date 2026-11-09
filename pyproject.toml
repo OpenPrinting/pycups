@@ -1,0 +1,27 @@
+[build-system]
+requires = ["meson-python>=0.16", "meson>=1.1"]
+build-backend = "mesonpy"
+
+[project]
+name = "pycups"
+dynamic = ["version"]
+description = "Python bindings for libcups"
+readme = {file = "README", content-type = "text/plain"}
+license = {text = "GPL-2.0-or-later"}
+requires-python = ">=3.6"
+maintainers = [
+    {name = "Zdenek Dohnal", email = "zdohnal@redhat.com"},
+]
+classifiers = [
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Development Status :: 5 - Production/Stable",
+    "Operating System :: Unix",
+    "Programming Language :: C",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+]
+
+[project.urls]
+Homepage = "https://github.com/OpenPrinting/pycups"
+Download = "https://github.com/OpenPrinting/pycups/releases"

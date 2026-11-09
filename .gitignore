@@ -2,5 +2,8 @@
 *~
 __pycache__/
 build/
+builddir/
+dist/
 cups.so
 html/
+*.egg-info/

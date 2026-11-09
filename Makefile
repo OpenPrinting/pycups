@@ -1,10 +1,8 @@
 PYTHON=python3
 NAME=pycups
-VERSION:=$(shell $(PYTHON) setup.py --version)
-SDIST_ARGS=--formats=gztar -d.
 RPMCONFIGDIR:=$(shell rpm -E "%{_rpmconfigdir}" 2>/dev/null || :)
 
-SOURCES=cupsmodule.c cupsconnection.c cupsppd.c cupsipp.c setup.py \
+SOURCES=cupsmodule.c cupsconnection.c cupsppd.c cupsipp.c \
 	cupsppd.h cupsipp.h cupsconnection.h cupsmodule.h \
 	psdriver.attr postscriptdriver.prov
 
@@ -13,8 +11,9 @@ DIST=Makefile test.py \
 	COPYING NEWS README TODO
 
 cups.so: force
-	$(PYTHON) setup.py build
-	ln -sf build/lib*/$@ .
+	meson setup builddir || true
+	meson compile -C builddir
+	ln -sf $$(ls builddir/cups.cpython-*.so 2>/dev/null | head -1) cups.so
 
 doc:	cups.so
 	rm -rf html
@@ -26,18 +25,13 @@ doczip:	doc
 	cd html && zip ../cups-html.zip *
 
 clean:
-	-rm -rf build cups.so html *.pyc *~ __pycache__
+	-rm -rf builddir dist cups.so html *.pyc *~ __pycache__
 
 dist:
-	$(PYTHON) setup.py sdist $(SDIST_ARGS)
-
-upload:
-	$(PYTHON) setup.py sdist $(SDIST_ARGS) upload -s
+	$(PYTHON) -m build --sdist
 
 install:	install-rpmhook
-	ROOT= ; \
-	if [ -n "$$DESTDIR" ]; then ROOT="--root $$DESTDIR"; fi; \
-	$(PYTHON) setup.py install --skip-build $$ROOT
+	$(PYTHON) -m pip install --no-build-isolation .
 
 install-rpmhook:
 	if [ -n "$(RPMCONFIGDIR)" ]; then \

@@ -762,7 +762,7 @@ static struct PyModuleDef moduledef = {
 
 #define INITERROR return NULL
 
-PyObject *
+PyMODINIT_FUNC
 PyInit_cups(void)
 {
     PyObject *m = PyModule_Create(&moduledef);

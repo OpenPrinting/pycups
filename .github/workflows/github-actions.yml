@@ -16,7 +16,7 @@ jobs:
     - name: update build env
       run: sudo apt-get update --fix-missing -y
     - name: install prerequisities
-      run: sudo apt-get install libcups2-dev python3-dev gcc python3-setuptools
+      run: sudo apt-get install libcups2-dev python3-dev gcc meson python3-build python3-mesonpy
     - name: make
       run: make
     - name: sudo make install
@@ -28,8 +28,8 @@ jobs:
     - name: start cupsd - needed for testing
       run: sudo systemctl start cups
     - name: start ippeveprinter to simulate a driverless printer
-      run: mkdir -p /tmp/ippeve/spool/ && ippeveprinter -vvvv -s 10,0 -d "/tmp/ippeve/spool/" -k "test-ippeve" &
+      run: mkdir -p /tmp/ippeve/spool/ && ippeveprinter -vvvv -s 10,0 -d "/tmp/ippeve/spool/" -k "test-ippeve" -p 8100 &
     - name: install a permanent queue
-      run: sudo lpadmin -p test-permanent -v ipp://localhost:8000/ipp/print -m everywhere -E && sleep 5
+      run: sudo lpadmin -p test-permanent -v ipp://localhost:8100/ipp/print -m everywhere -E && sleep 5
     - name: python3 test.py
       run: python3 test.py
